@@ -20,13 +20,13 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       // Try remote login first
       final loginResult = await remoteDataSource.login(email, password);
-      
       // Get user details from remote
       final user = await remoteDataSource.getCurrentUser(loginResult['userId']);
-      
-      // Store user locally for offline access
-      await localDataSource.registerUser(user);
-      
+      // Store user locally for offline access, but only if not already present
+      final existingUser = await localDataSource.getUserByEmail(user.email);
+      if (existingUser == null) {
+        await localDataSource.registerUser(user);
+      }
       return Right(UserEntity(
         id: user.id,
         firstName: user.firstName,
@@ -37,6 +37,7 @@ class AuthRepositoryImpl implements AuthRepository {
         role: user.role,
       ));
     } catch (e) {
+      print('Remote login failed: $e');
       // Fallback to local authentication if remote fails
       try {
         final localUser = await localDataSource.authenticateUser(email, password);
@@ -52,9 +53,9 @@ class AuthRepositoryImpl implements AuthRepository {
           ));
         }
       } catch (localError) {
+        print('Local login failed: $localError');
         // Both remote and local failed
       }
-      
       return Left('Login failed: ${e.toString()}');
     }
   }
