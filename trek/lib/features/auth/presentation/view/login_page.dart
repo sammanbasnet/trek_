@@ -13,9 +13,29 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _usernameController.clear();
+    _passwordController.clear();
+    // Always reset AuthBloc state when login page is opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthBloc>().add(AuthResetRequested());
+    });
+    _usernameController.addListener(_clearErrorOnInput);
+    _passwordController.addListener(_clearErrorOnInput);
+  }
+
+  void _clearErrorOnInput() {
+    final bloc = context.read<AuthBloc>();
+    final state = bloc.state;
+    if (state is AuthError) {
+      bloc.add(AuthResetRequested());
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Reset AuthBloc state to initial when opening login page
-    context.read<AuthBloc>().add(AuthResetRequested());
+    // No longer reset AuthBloc state here
     return Scaffold(
       body: Stack(
         children: [
@@ -38,8 +58,12 @@ class _LoginPageState extends State<LoginPage> {
               child: BlocConsumer<AuthBloc, AuthState>(
                 listener: (context, state) {
                   if (state is Authenticated) {
+                    // Clear any error SnackBars before navigating
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
                     Navigator.pushReplacementNamed(context, '/dashboard');
                   } else if (state is AuthError) {
+                    // Clear any previous SnackBars before showing a new one
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
                   }
                 },
@@ -56,6 +80,7 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder(),
                         ),
+                        onChanged: (_) => _clearErrorOnInput(),
                       ),
                       const SizedBox(height: 20),
                       TextField(
@@ -66,6 +91,7 @@ class _LoginPageState extends State<LoginPage> {
                           border: OutlineInputBorder(),
                         ),
                         obscureText: true,
+                        onChanged: (_) => _clearErrorOnInput(),
                       ),
                       const SizedBox(height: 10),
                       Align(
@@ -93,6 +119,8 @@ class _LoginPageState extends State<LoginPage> {
                       TextButton(
                         onPressed: () {
                           Navigator.pushReplacementNamed(context, '/signup');
+                          // Reset AuthBloc state when navigating to signup
+                          context.read<AuthBloc>().add(AuthResetRequested());
                         },
                         child: const Text("Sign up here"),
                       )

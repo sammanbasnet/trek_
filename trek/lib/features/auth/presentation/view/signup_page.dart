@@ -48,7 +48,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Registration successful! Please log in.')),
                     );
-                    Navigator.pushReplacementNamed(context, '/login');
+                    context.read<AuthBloc>().add(AuthResetRequested());
+                    Navigator.pushReplacementNamed(context, '/login', arguments: true);
                   } else if (state is AuthError) {
                     _wasLoading = false;
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));

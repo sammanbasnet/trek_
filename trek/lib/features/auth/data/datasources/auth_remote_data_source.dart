@@ -35,6 +35,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.statusCode == 201) {
         // Parse the created user from the backend response if present
         final responseData = response.data;
+        // After registration, clear any stored auth info
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('auth_token');
+        await prefs.remove('user_id');
+        await prefs.remove('user_role');
         if (responseData != null && responseData['data'] != null) {
           return UserModel.fromJson(responseData['data']);
         }
