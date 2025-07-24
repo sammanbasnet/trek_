@@ -38,13 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
         },
         child: Container(
           width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.blue, Colors.lightBlue],
-            ),
-          ),
+          color: Colors.white,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -63,10 +57,11 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.hiking,
-                  size: 60,
-                  color: Colors.blue,
+                child: Image.asset(
+                  'assets/image/trek_logo.png',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 30),
