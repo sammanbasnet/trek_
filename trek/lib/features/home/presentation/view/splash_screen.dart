@@ -57,8 +57,8 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ],
                 ),
-                child: Image.asset(
-                  'assets/image/trek_logo.png',
+        child: Image.asset(
+          'assets/image/trek_logo.png',
                   width: 80,
                   height: 80,
                   fit: BoxFit.contain,

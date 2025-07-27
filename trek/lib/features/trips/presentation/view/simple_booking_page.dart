@@ -50,7 +50,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
         print('Booking data: $bookingData');
 
         final response = await http.post(
-          Uri.parse('http://localhost:3000/api/v1/bookings'),
+          Uri.parse('http://192.168.1.16:3000/api/v1/bookings'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode(bookingData),
         );

@@ -168,20 +168,20 @@ class _HomeContentState extends State<HomeContent> {
             ),
           )
         else
-          SizedBox(
-            height: 240,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
+        SizedBox(
+          height: 240,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
               itemCount: packages.length,
-              itemBuilder: (context, index) {
+            itemBuilder: (context, index) {
                 var package = packages[index];
                 print('HomeContent: Building package ${package['title']}');
-                return GestureDetector(
-                  onTap: () {
+              return GestureDetector(
+                onTap: () {
                     print('HomeContent: Tapped on package ${package['title']}');
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
                         builder: (context) => TripDetailPage(trip: {
                           'id': package['_id'] ?? '',
                           'title': package['title'] ?? '',
@@ -193,28 +193,28 @@ class _HomeContentState extends State<HomeContent> {
                               : 'https://i.pinimg.com/736x/86/82/e1/8682e16c492f150bd46e07e421adf5f2.jpg',
                           'description': package['description'] ?? '',
                         }),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 160,
-                    margin: const EdgeInsets.only(right: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white,
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: Offset(2, 2),
-                        )
-                      ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  );
+                },
+                child: Container(
+                  width: 160,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(2, 2),
+                      )
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                           child: Image.network(
                             package['image'] != null 
                                 ? 'http://192.168.1.16:3000/uploads/${package['image']}'
@@ -231,33 +231,33 @@ class _HomeContentState extends State<HomeContent> {
                               );
                             },
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                               Text(package['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 4),
+                            const SizedBox(height: 4),
                               Text(package['location'] ?? '', style: const TextStyle(color: Colors.grey)),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
                                   Text('\$${package['price']?.toString() ?? '0'} /visit', style: const TextStyle(color: Colors.redAccent)),
-                                  const Icon(Icons.favorite_border, size: 18),
-                                ],
-                              ),
-                            ],
-                          ),
+                                const Icon(Icons.favorite_border, size: 18),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
+        ),
         const SizedBox(height: 20),
       ],
     );
