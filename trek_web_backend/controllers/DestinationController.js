@@ -1,16 +1,13 @@
-const Destination = require('../model/Destination')
+const Destination = require('../models/Destination');
 
 const findAll = async (req, res) => {
     try {
         const destinations = await Destination.find();
         res.status(200).json(destinations);
-    } catch (e) {
-        res.json(e)
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-
-
-
-}
+};
 const save = async (req, res) => {
     try {
         const destination = new Destination(req.body);

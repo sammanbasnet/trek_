@@ -11,6 +11,7 @@ class ApiService {
   late Dio _dio;
 
   void initialize() {
+    print('ApiService: Initializing with baseUrl: ${ApiEndpoints.baseUrl}');
     _dio = Dio(BaseOptions(
       baseUrl: ApiEndpoints.baseUrl,
       connectTimeout: const Duration(seconds: 30),
@@ -59,6 +60,11 @@ class ApiService {
     await prefs.remove('auth_token');
     await prefs.remove('user_id');
     // You can add navigation logic here if needed
+  }
+
+  void reinitialize() {
+    print('ApiService: Reinitializing with baseUrl: ${ApiEndpoints.baseUrl}');
+    initialize();
   }
 
   // GET request

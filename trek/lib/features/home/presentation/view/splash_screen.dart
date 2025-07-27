@@ -13,30 +13,30 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Check authentication status after a short delay
+    // Check authentication status after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
+      print('SplashScreen: Checking authentication status');
       context.read<AuthBloc>().add(CheckAuthStatus());
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is Authenticated) {
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          } else if (state is Unauthenticated) {
-            Navigator.pushReplacementNamed(context, '/login');
-          } else if (state is AuthError) {
-            // Show error and navigate to login
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
-            Navigator.pushReplacementNamed(context, '/login');
-          }
-        },
-        child: Container(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is Authenticated) {
+          print('SplashScreen: User is authenticated, navigating to dashboard');
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        } else if (state is Unauthenticated) {
+          print('SplashScreen: User is not authenticated, navigating to login');
+          Navigator.pushReplacementNamed(context, '/login');
+        } else if (state is AuthError) {
+          print('SplashScreen: Auth error: ${state.message}');
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      },
+      child: Scaffold(
+        body: Container(
           width: double.infinity,
           color: Colors.white,
           child: Column(
@@ -70,7 +70,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Colors.black,
                   fontFamily: 'Opensans Bold',
                 ),
               ),
@@ -79,13 +79,13 @@ class _SplashScreenState extends State<SplashScreen> {
                 'Your Adventure Awaits',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.white70,
+                  color: Colors.grey,
                   fontFamily: 'Opensans Regular',
                 ),
               ),
               const SizedBox(height: 50),
               const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
               ),
             ],
           ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trek/features/booking/presentation/view/bookings_page.dart';
-import 'package:trek/features/home/presentation/view/home_content.dart';
+import 'package:trek/features/home/presentation/view/simple_home_content.dart';
 import 'package:trek/features/profile/presentation/view/profile_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -14,35 +14,9 @@ class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    const HomeContent(),
+    const SimpleHomeContent(),
     const BookingsPage(),
     const ProfilePage(),
-  ];
-
-  final List<String> categories = ['Lakes', 'Mountain', 'Forest', 'Sea'];
-
-  final List<Map<String, String>> topTrips = [
-    {
-      'title': 'Rara Lake',
-      'location': 'Nepal',
-      'price': '\$40 /visit',
-      'rating': '4.5',
-      'image': 'https://i.pinimg.com/736x/86/82/e1/8682e16c492f150bd46e07e421adf5f2.jpg'
-    },
-    {
-      'title': 'Tilicho Lake',
-      'location': 'Nepal',
-      'price': '\$40 /visit',
-      'rating': '4.5',
-      'image': 'https://i.pinimg.com/736x/6e/75/54/6e7554806054be9939fd9ee89c632e21.jpg'
-    },
-    {
-      'title': 'Shey-Phoksundo Lake',
-      'location': 'Nepal',
-      'price': '\$40 /visit',
-      'rating': '4.5',
-      'image': 'https://i.pinimg.com/736x/eb/01/e5/eb01e564d2fc2b5c4c64ef7da9f1480b.jpg'
-    },
   ];
 
   void _onItemTapped(int index) {

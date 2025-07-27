@@ -1,44 +1,48 @@
-import 'package:dio/dio.dart';
-import '../../../../core/network/api_service.dart';
-import '../../../../core/network/api_endpoints.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../models/package_model.dart';
 
-abstract class PackageRemoteDataSource {
-  Future<List<PackageModel>> getAllPackages();
-  Future<PackageModel> getPackageById(String id);
-}
+class PackageRemoteDataSource {
+  final String baseUrl;
+  final http.Client client;
 
-class PackageRemoteDataSourceImpl implements PackageRemoteDataSource {
-  final ApiService _apiService = ApiService();
+  PackageRemoteDataSource({required this.baseUrl, http.Client? client})
+      : client = client ?? http.Client();
 
-  @override
   Future<List<PackageModel>> getAllPackages() async {
     try {
-      final response = await _apiService.get(ApiEndpoints.packages);
+      final url = '$baseUrl/package';
+      print('PackageRemoteDataSource: Fetching packages from $url');
+      final response = await client.get(Uri.parse(url));
+      
+      print('PackageRemoteDataSource: Response status: ${response.statusCode}');
+      print('PackageRemoteDataSource: Response body: ${response.body}');
       
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'];
+        final List<dynamic> data = json.decode(response.body);
+        print('PackageRemoteDataSource: Decoded ${data.length} packages');
         return data.map((json) => PackageModel.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to fetch packages');
+        throw Exception('Failed to load packages: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Failed to fetch packages: ${e.toString()}');
+      print('PackageRemoteDataSource: Error: $e');
+      throw Exception('Failed to load packages: $e');
     }
   }
 
-  @override
   Future<PackageModel> getPackageById(String id) async {
     try {
-      final response = await _apiService.get('${ApiEndpoints.packageById}$id');
+      final response = await client.get(Uri.parse('$baseUrl/package/$id'));
       
       if (response.statusCode == 200) {
-        return PackageModel.fromJson(response.data['data']);
+        final data = json.decode(response.body);
+        return PackageModel.fromJson(data);
       } else {
-        throw Exception('Failed to fetch package');
+        throw Exception('Failed to load package: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Failed to fetch package: ${e.toString()}');
+      throw Exception('Failed to load package: $e');
     }
   }
 } 

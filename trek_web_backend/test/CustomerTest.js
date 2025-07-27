@@ -14,6 +14,15 @@ let customerId;
 describe("Customer API Tests", function () {
     before(async function () {
         await Customer.deleteMany(); // Clear test database before running tests
+        // Create admin user for admin login test
+        await Customer.create({
+            fname: "Admin",
+            lname: "User",
+            phone: "9999999999",
+            email: "admin@example.com",
+            password: "adminpassword",
+            role: "admin"
+        });
     });
 
     // Register a new customer
@@ -31,7 +40,11 @@ describe("Customer API Tests", function () {
             .end((err, res) => {
                 expect(res).to.have.status(201);
                 expect(res.body).to.have.property("success", true);
-                done();
+                // Fetch the customerId for later tests
+                Customer.findOne({ email: "johndoe@example.com" }).then((customer) => {
+                    customerId = customer._id;
+                    done();
+                });
             });
     });
 
@@ -59,7 +72,7 @@ describe("Customer API Tests", function () {
             .set("Authorization", `Bearer ${customerToken}`)
             .end((err, res) => {
                 expect(res).to.have.status(403);
-                expect(res.body).to.have.property("message", "Access denied. Admins only.");
+                expect(res.body).to.have.property("message", `User role 'customer' is not authorized to access this route`);
                 done();
             });
     });
@@ -101,6 +114,9 @@ describe("Customer API Tests", function () {
             .set("Authorization", `Bearer ${customerToken}`)
             .send({ fname: "John Updated", lname: "Doe Updated" })
             .end((err, res) => {
+                if (res.status !== 200) {
+                    console.error('Update customer profile error:', res.body);
+                }
                 expect(res).to.have.status(200);
                 expect(res.body).to.have.property("success", true);
                 expect(res.body.data.fname).to.equal("John Updated");
@@ -114,6 +130,9 @@ describe("Customer API Tests", function () {
             .delete(`/api/v1/customers/${customerId}`)
             .set("Authorization", `Bearer ${adminToken}`)
             .end((err, res) => {
+                if (res.status !== 200) {
+                    console.error('Delete customer error:', res.body);
+                }
                 expect(res).to.have.status(200);
                 expect(res.body).to.have.property("success", true);
                 done();

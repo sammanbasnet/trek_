@@ -21,6 +21,7 @@ exports.createPackage = async (req, res) => {
     const savedPackage = await newPackage.save();
     res.status(201).json(savedPackage);
   } catch (error) {
+    console.error('createPackage error:', error.stack || error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -32,6 +33,7 @@ exports.getAllPackages = async (req, res) => {
     const packages = await Package.find();
     res.status(200).json(packages);
   } catch (error) {
+    console.error('getAllPackages error:', error.stack || error);
     res.status(500).json({ error: error.message });
   }
 };

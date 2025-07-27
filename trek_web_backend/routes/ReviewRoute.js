@@ -1,6 +1,6 @@
 const express = require("express")
 const router = express.Router();
-const { findAll, save, findById, deleteById, update } = require("../controller/ReviewController");
+const { findAll, save, findById, deleteById, update } = require("../controllers/ReviewController");
 const PackageValidation = require("../validation/ReviewValidation");
 
 

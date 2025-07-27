@@ -26,9 +26,6 @@ Future<void> init() async {
   sl.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSourceImpl(),
   );
-  sl.registerLazySingleton<PackageRemoteDataSource>(
-    () => PackageRemoteDataSourceImpl(),
-  );
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(

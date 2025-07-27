@@ -1,6 +1,6 @@
 const express = require("express")
 const router = express.Router();
-const { findAll, save, findById, deleteById, update } = require("../controller/PaymentController");
+const { findAll, save, findById, deleteById, update } = require("../controllers/PaymentController");
 const PackageValidation = require("../validation/PaymentValidation");
 
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'simple_booking_page.dart';
 
 class TripDetailPage extends StatelessWidget {
   final Map<String, String> trip;
@@ -75,8 +76,11 @@ class TripDetailPage extends StatelessWidget {
                           ),
                         ),
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Booking functionality will be implemented soon!')),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SimpleBookingPage(package: trip),
+                            ),
                           );
                         },
                         child: const Text('Book Now', style: TextStyle(fontSize: 18, color: Colors.white)),

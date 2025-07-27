@@ -20,22 +20,26 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       // Try remote login first
       final loginResult = await remoteDataSource.login(email, password);
-      // Get user details from remote
-      final user = await remoteDataSource.getCurrentUser(loginResult['userId']);
-      // Store user locally for offline access, but only if not already present
-      final existingUser = await localDataSource.getUserByEmail(user.email);
-      if (existingUser == null) {
-        await localDataSource.registerUser(user);
-      }
-      return Right(UserEntity(
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        image: user.image,
-        role: user.role,
-      ));
+      
+      // Create a basic user entity from login response
+      // We'll get the full user details later if needed
+      final userEntity = UserEntity(
+        id: loginResult['userId'],
+        firstName: '', // We'll get this from local storage or skip for now
+        lastName: '',
+        email: email,
+        phone: '',
+        image: '',
+        role: loginResult['role'] ?? 'customer',
+      );
+      
+      // Store user info locally for persistence
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_email', email);
+      await prefs.setString('user_id', loginResult['userId']);
+      await prefs.setString('user_role', loginResult['role'] ?? 'customer');
+      
+      return Right(userEntity);
     } catch (e) {
       print('Remote login failed: $e');
       // Fallback to local authentication if remote fails
@@ -97,17 +101,19 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('user_id');
+      final userRole = prefs.getString('user_role');
+      final userEmail = prefs.getString('user_email');
       
       if (userId != null) {
-        final user = await remoteDataSource.getCurrentUser(userId);
+        // Return basic user info from local storage
         return Right(UserEntity(
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          image: user.image,
-          role: user.role,
+          id: userId,
+          firstName: '', // We can add this later if needed
+          lastName: '',
+          email: userEmail ?? '', // Get email from local storage
+          phone: '',
+          image: '',
+          role: userRole ?? 'customer',
         ));
       } else {
         return Left('No user logged in');

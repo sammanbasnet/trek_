@@ -4,82 +4,62 @@ part 'package_model.g.dart';
 
 @JsonSerializable()
 class PackageModel {
-  @JsonKey(name: '_id')
-  final String? id;
-  
-  final String name;
+  final String id;
+  final String title;
   final String description;
+  final String location;
   final double price;
-  final int duration;
-  final String destination;
-  final String? image;
-  final List<String> highlights;
-  final List<String> included;
-  final List<String> excluded;
-  final String difficulty;
-  final int maxGroupSize;
-  final bool isActive;
-  
-  @JsonKey(name: 'createdAt')
-  final DateTime? createdAt;
-  
-  @JsonKey(name: 'updatedAt')
-  final DateTime? updatedAt;
+  final String duration;
+  final String image;
+  final List<DateTime> availableDates;
+  final String category;
+  final List<String> itinerary;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   PackageModel({
-    this.id,
-    required this.name,
+    required this.id,
+    required this.title,
     required this.description,
+    required this.location,
     required this.price,
     required this.duration,
-    required this.destination,
-    this.image,
-    required this.highlights,
-    required this.included,
-    required this.excluded,
-    required this.difficulty,
-    required this.maxGroupSize,
-    this.isActive = true,
-    this.createdAt,
-    this.updatedAt,
+    required this.image,
+    required this.availableDates,
+    required this.category,
+    required this.itinerary,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  factory PackageModel.fromJson(Map<String, dynamic> json) => _$PackageModelFromJson(json);
-  Map<String, dynamic> toJson() => _$PackageModelToJson(this);
+  factory PackageModel.fromJson(Map<String, dynamic> json) => PackageModel(
+    id: json['_id']?.toString() ?? '',
+    title: json['title']?.toString() ?? '',
+    description: json['description']?.toString() ?? '',
+    location: json['location']?.toString() ?? '',
+    price: json['price'] is double ? json['price'] : double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+    duration: json['duration']?.toString() ?? '',
+    image: json['image']?.toString() ?? '',
+    availableDates: json['availableDates'] != null 
+        ? (json['availableDates'] as List).map((date) => DateTime.tryParse(date.toString()) ?? DateTime.now()).toList()
+        : [],
+    category: json['category']?.toString() ?? '',
+    itinerary: json['itinerary'] != null 
+        ? (json['itinerary'] as List).map((item) => item.toString()).toList()
+        : [],
+    createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+    updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ?? DateTime.now(),
+  );
 
-  PackageModel copyWith({
-    String? id,
-    String? name,
-    String? description,
-    double? price,
-    int? duration,
-    String? destination,
-    String? image,
-    List<String>? highlights,
-    List<String>? included,
-    List<String>? excluded,
-    String? difficulty,
-    int? maxGroupSize,
-    bool? isActive,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return PackageModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      description: description ?? this.description,
-      price: price ?? this.price,
-      duration: duration ?? this.duration,
-      destination: destination ?? this.destination,
-      image: image ?? this.image,
-      highlights: highlights ?? this.highlights,
-      included: included ?? this.included,
-      excluded: excluded ?? this.excluded,
-      difficulty: difficulty ?? this.difficulty,
-      maxGroupSize: maxGroupSize ?? this.maxGroupSize,
-      isActive: isActive ?? this.isActive,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'description': description,
+    'location': location,
+    'price': price,
+    'duration': duration,
+    'image': image,
+    'availableDates': availableDates.map((date) => date.toIso8601String()).toList(),
+    'category': category,
+    'itinerary': itinerary,
+  };
 } 

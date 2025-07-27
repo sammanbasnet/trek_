@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../trips/presentation/view/trip_detail_page.dart';
 
-class HomeContent extends StatefulWidget {
-  const HomeContent({super.key});
+class SimpleHomeContent extends StatefulWidget {
+  const SimpleHomeContent({super.key});
 
   @override
-  State<HomeContent> createState() => _HomeContentState();
+  State<SimpleHomeContent> createState() => _SimpleHomeContentState();
 }
 
-class _HomeContentState extends State<HomeContent> {
+class _SimpleHomeContentState extends State<SimpleHomeContent> {
   List<Map<String, dynamic>> packages = [];
   bool isLoading = true;
   String? error;
@@ -18,14 +18,13 @@ class _HomeContentState extends State<HomeContent> {
   @override
   void initState() {
     super.initState();
-    print('HomeContent: initState called');
+    print('SimpleHomeContent: initState called');
     fetchPackages();
   }
 
   Future<void> fetchPackages() async {
     try {
-      print('HomeContent: Fetching packages...');
-      print('HomeContent: URL: http://192.168.1.16:3000/api/v1/package');
+      print('SimpleHomeContent: Fetching packages...');
       setState(() {
         isLoading = true;
         error = null;
@@ -35,8 +34,8 @@ class _HomeContentState extends State<HomeContent> {
         Uri.parse('http://192.168.1.16:3000/api/v1/package'),
       );
 
-      print('HomeContent: Response status: ${response.statusCode}');
-      print('HomeContent: Response body: ${response.body}');
+      print('SimpleHomeContent: Response status: ${response.statusCode}');
+      print('SimpleHomeContent: Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -44,10 +43,7 @@ class _HomeContentState extends State<HomeContent> {
           packages = data.map((json) => Map<String, dynamic>.from(json)).toList();
           isLoading = false;
         });
-        print('HomeContent: Loaded ${packages.length} packages');
-        for (var package in packages) {
-          print('HomeContent: Package: ${package['title']} - \$${package['price']}');
-        }
+        print('SimpleHomeContent: Loaded ${packages.length} packages');
       } else {
         setState(() {
           error = 'Failed to load packages: ${response.statusCode}';
@@ -55,7 +51,7 @@ class _HomeContentState extends State<HomeContent> {
         });
       }
     } catch (e) {
-      print('HomeContent: Error: $e');
+      print('SimpleHomeContent: Error: $e');
       setState(() {
         error = 'Error: $e';
         isLoading = false;
@@ -65,7 +61,7 @@ class _HomeContentState extends State<HomeContent> {
 
   @override
   Widget build(BuildContext context) {
-    print('HomeContent: build method called');
+    print('SimpleHomeContent: build method called');
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
@@ -143,10 +139,7 @@ class _HomeContentState extends State<HomeContent> {
                   Text(error!, style: const TextStyle(fontSize: 16, color: Colors.red)),
                   const SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: () {
-                      print('HomeContent: Retry button pressed');
-                      fetchPackages();
-                    },
+                    onPressed: fetchPackages,
                     child: const Text('Retry'),
                   ),
                 ],
@@ -175,10 +168,10 @@ class _HomeContentState extends State<HomeContent> {
               itemCount: packages.length,
               itemBuilder: (context, index) {
                 var package = packages[index];
-                print('HomeContent: Building package ${package['title']}');
+                print('SimpleHomeContent: Building package ${package['title']}');
                 return GestureDetector(
                   onTap: () {
-                    print('HomeContent: Tapped on package ${package['title']}');
+                    print('SimpleHomeContent: Tapped on package ${package['title']}');
                     Navigator.push(
                       context,
                       MaterialPageRoute(

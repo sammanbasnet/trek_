@@ -7,7 +7,7 @@ const packageSchema = new mongoose.Schema(
     location: { type: String, required: true },
     price: { type: Number, required: true },
     duration: { type: String, required: true },
-    image: { type: String, required: true },
+    image: { type: String, required: false },
     availableDates: [{ type: Date, required: true }],
     category: { type: String, required: true, enum: ["Adventure", "Luxury", "Budget"] },
     itinerary: [{ type: String, required: true }], // Array of strings for itinerary

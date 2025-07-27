@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'features/auth/data/models/user_model.dart';
 import 'core/di/injection_container.dart' as di;
+import 'core/network/api_service.dart';
 import 'app.dart';
 
 void main() async {
@@ -18,6 +19,9 @@ void main() async {
 
   // Initialize dependency injection
   await di.init();
+  
+  // Reinitialize API service to ensure it uses the latest URL
+  di.sl<ApiService>().reinitialize();
   
   runApp(const TrekApp());
 }

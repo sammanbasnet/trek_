@@ -1,13 +1,13 @@
-const Itinerary = require('../model/Itinerary')
+const Itinerary = require('../models/Itinerary')
+
 const findAll = async (req, res) => {
     try {
-        const itinerarys = await Itinerary.find().populate(["bookingId"]);
-        res.status(200).json(itinerarys);
-    } catch (e) {
-        res.json(e)
+        const itineraries = await Itinerary.find();
+        res.status(200).json(itineraries);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-
-}
+};
 const save = async (req, res) => {
     try {
         const { amount, itineraryMethod, itineraryStatus, PaidAt, } = req.body

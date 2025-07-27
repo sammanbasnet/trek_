@@ -64,11 +64,10 @@ exports.register = asyncHandler(async (req, res, next) => {
         role: role || "customer", // Default role is "customer"
     });
 
-    // Send response with created customer
+    // Send response without token
     res.status(201).json({
         success: true,
         message: "Customer registered successfully",
-        data: customer,
     });
 });
 
@@ -139,19 +138,25 @@ exports.updateCustomer = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/v1/customers/:id
 // @access  Private (Admin Only)
 exports.deleteCustomer = asyncHandler(async (req, res, next) => {
-    const customer = await Customer.findById(req.params.id);
+    try {
+        console.log('Attempting to delete customer with id:', req.params.id);
+        const customer = await Customer.findById(req.params.id);
 
-    if (!customer) {
-        return res.status(404).json({ message: "Customer not found" });
+        if (!customer) {
+            return res.status(404).json({ message: "Customer not found" });
+        }
+
+        // Only allow admin to delete customer
+        if (req.user.role !== "admin") {
+            return res.status(403).json({ message: "Access denied." });
+        }
+
+        await customer.deleteOne();
+        res.status(200).json({ success: true, message: "Customer deleted successfully" });
+    } catch (err) {
+        console.error('Delete customer controller error:', err.stack || err);
+        res.status(500).json({ success: false, message: 'Internal server error', error: err.message });
     }
-
-    // Only allow admin to delete customer
-    if (req.user.role !== "admin") {
-        return res.status(403).json({ message: "Access denied." });
-    }
-
-    await customer.remove();
-    res.status(200).json({ success: true, message: "Customer deleted successfully" });
 });
 
 // @desc    Upload Single Image

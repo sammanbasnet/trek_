@@ -9,17 +9,21 @@ const {
     register,
     login,
     uploadImage,
-    updateCustomer
+    updateCustomer,
+    deleteCustomer
 } = require("../controllers/customer");
 
-// Routes
+// Register and login
 router.post("/register", upload.single("profilePicture"), register);
 router.post("/login", login);
 
-// Restrict these routes to logged-in users
-router.get("/getAllCustomers", protect, authorize("admin"), getCustomers);
-router.get("/getCustomer/:id", protect, authorize("admin", "customer"), getCustomer);
-router.put("/updateCustomer/:id", protect, authorize("admin", "customer"), upload.single("profilePicture"), updateCustomer);
+// RESTful customer routes
+router.get("/", protect, authorize("admin"), getCustomers); // GET /api/v1/customers
+router.get("/:id", protect, authorize("admin", "customer"), getCustomer); // GET /api/v1/customers/:id
+router.put("/update/:id", protect, authorize("admin", "customer"), upload.single("profilePicture"), updateCustomer); // PUT /api/v1/customers/update/:id
+router.delete("/:id", protect, authorize("admin"), deleteCustomer); // DELETE /api/v1/customers/:id
+
+// Image upload
 router.post("/uploadImage", protect, authorize("admin", "customer"), upload.single("profilePicture"), uploadImage);
 
 module.exports = router;
