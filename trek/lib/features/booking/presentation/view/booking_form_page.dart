@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/booking_model.dart';
 import '../../data/booking_remote_data_source.dart';
 import '../../data/booking_repository_impl.dart';
+import '../../../../core/network/api_endpoints.dart';
 import '../booking_cubit.dart';
 
 class BookingFormPage extends StatefulWidget {
@@ -68,7 +69,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
 
       // Create booking using the repository
       final repository = BookingRepositoryImpl(
-        BookingRemoteDataSource(baseUrl: 'http://192.168.1.16:3000/api/v1'),
+        BookingRemoteDataSource(baseUrl: ApiEndpoints.baseUrl),
       );
 
       repository.createBooking(bookingData).then((_) {

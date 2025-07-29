@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../../../core/network/api_endpoints.dart';
 
 class SimpleBookingPage extends StatefulWidget {
   final Map<String, String> package;
@@ -50,7 +51,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
         print('Booking data: $bookingData');
 
         final response = await http.post(
-          Uri.parse('http://10.0.2.2:3000/api/v1/bookings'),
+          Uri.parse('${ApiEndpoints.baseUrl}/bookings'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode(bookingData),
         );

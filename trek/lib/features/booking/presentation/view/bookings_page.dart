@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../booking_cubit.dart';
 import '../../data/booking_repository_impl.dart';
 import '../../data/booking_remote_data_source.dart';
+import '../../../../core/network/api_endpoints.dart';
 
 class BookingsPage extends StatelessWidget {
   const BookingsPage({super.key});
@@ -12,7 +13,7 @@ class BookingsPage extends StatelessWidget {
     // TODO: Replace with actual userId from auth
     const userId = 'USER_ID';
     final repository = BookingRepositoryImpl(
-      BookingRemoteDataSource(baseUrl: 'http://192.168.1.16:3000/api/v1'),
+      BookingRemoteDataSource(baseUrl: ApiEndpoints.baseUrl),
     );
     return BlocProvider(
       create: (_) => BookingCubit(repository)..fetchBookings(userId),

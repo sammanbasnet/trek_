@@ -1,8 +1,18 @@
+import 'dart:io';
+
 class ApiEndpoints {
-  // Base URL - change this to your backend URL when running
-  static const String baseUrl = 'http://10.0.2.2:3000/api/v1'; // For Android emulator
-  // static const String baseUrl = 'http://localhost:3000/api/v1'; // For iOS simulator
-  // static const String baseUrl = 'http://<your-pc-ip>:3000/api/v1'; // For physical device
+  /// Returns the correct base URL depending on environment.
+  ///
+  /// - If you run with --dart-define=API_BASE_URL=... it will use that.
+  /// - Otherwise, uses 10.0.2.2 for emulator, or fallback to localhost.
+  static String get baseUrl {
+    const envBaseUrl = String.fromEnvironment('API_BASE_URL');
+    if (envBaseUrl.isNotEmpty) return envBaseUrl;
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:3000/api/v1';
+    }
+    return 'http://localhost:3000/api/v1';
+  }
 
   // Auth endpoints
   static const String register = '/auth/register';

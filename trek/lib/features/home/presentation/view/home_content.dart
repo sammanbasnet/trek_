@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../trips/presentation/view/trip_detail_page.dart';
+import '../../../../core/network/api_endpoints.dart';
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -25,14 +26,14 @@ class _HomeContentState extends State<HomeContent> {
   Future<void> fetchPackages() async {
     try {
       print('HomeContent: Fetching packages...');
-      print('HomeContent: URL: http://10.0.2.2:3000/api/v1/package');
+      print('HomeContent: URL: \'${ApiEndpoints.baseUrl}/package\'');
       setState(() {
         isLoading = true;
         error = null;
       });
 
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/api/v1/package'),
+        Uri.parse('${ApiEndpoints.baseUrl}/package'),
       );
 
       print('HomeContent: Response status: ${response.statusCode}');
@@ -189,7 +190,7 @@ class _HomeContentState extends State<HomeContent> {
                           'price': '\$${package['price']?.toString() ?? '0'} /visit',
                           'rating': '4.5',
                           'image': (package['image'] != null && package['image'].toString().isNotEmpty)
-                              ? 'http://10.0.2.2:3000/uploads/${package['image'].toString().split('/').last}'
+                              ? '${ApiEndpoints.baseUrl.replaceAll('/api/v1', '')}/uploads/${package['image'].toString().split('/').last}'
                               : 'https://via.placeholder.com/300x200',
                           'description': package['description'] ?? '',
                         }),
@@ -217,7 +218,7 @@ class _HomeContentState extends State<HomeContent> {
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                         child: Image.network(
                           (package['image'] != null && package['image'].toString().isNotEmpty)
-                              ? 'http://10.0.2.2:3000/uploads/${package['image']}'
+                              ? '${ApiEndpoints.baseUrl.replaceAll('/api/v1', '')}/uploads/${package['image']}'
                               : 'https://via.placeholder.com/150',
                           height: 120,
                           width: double.infinity,

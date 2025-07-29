@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../auth/data/datasources/auth_remote_data_source.dart';
+import '../../../../core/network/api_endpoints.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -33,7 +34,7 @@ class _ProfilePageState extends State<ProfilePage> {
         'profilePicture': await MultipartFile.fromFile(pickedFile.path, filename: pickedFile.name),
       });
       final response = await dio.post(
-        'http://10.0.2.2:3000/api/v1/customers/uploadImage',
+        '${ApiEndpoints.baseUrl}/customers/uploadImage',
         data: formData,
       );
       if (response.statusCode == 200 && response.data['data'] != null) {
@@ -188,7 +189,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   radius: 44,
                                   backgroundColor: Colors.white,
                                   backgroundImage: (_uploadedImage != null || (user.image != null && user.image!.isNotEmpty))
-                                      ? NetworkImage('http://10.0.2.2:3000/uploads/${_uploadedImage ?? user.image}')
+                                      ? NetworkImage('${ApiEndpoints.baseUrl.replaceAll('/api/v1', '')}/uploads/${_uploadedImage ?? user.image}')
                                       : null,
                                   child: (_uploadedImage == null && (user.image == null || user.image!.isEmpty))
                                       ? Icon(Icons.person, size: 44, color: Colors.deepPurple[200])
