@@ -6,6 +6,9 @@ import 'dart:ui';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
+import '../../../auth/data/models/user_model.dart';
+import '../../../auth/data/datasources/auth_remote_data_source.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -55,6 +58,77 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally {
       setState(() { _isUploading = false; });
     }
+  }
+
+  void _showEditProfileDialog(BuildContext context, UserEntity user) {
+    final _firstNameController = TextEditingController(text: user.firstName);
+    final _lastNameController = TextEditingController(text: user.lastName);
+    final _phoneController = TextEditingController(text: user.phone);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Profile'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _firstNameController,
+                decoration: const InputDecoration(labelText: 'First Name'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _lastNameController,
+                decoration: const InputDecoration(labelText: 'Last Name'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _phoneController,
+                decoration: const InputDecoration(labelText: 'Phone'),
+                keyboardType: TextInputType.phone,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final updatedUser = UserModel(
+                  id: user.id,
+                  firstName: _firstNameController.text.trim(),
+                  lastName: _lastNameController.text.trim(),
+                  email: user.email,
+                  phone: _phoneController.text.trim(),
+                  image: user.image,
+                  role: user.role,
+                );
+                try {
+                  final remote = AuthRemoteDataSourceImpl();
+                  await remote.updateProfile(user.id ?? '', updatedUser);
+                  if (mounted) {
+                    context.read<AuthBloc>().add(CheckAuthStatus());
+                  }
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profile updated!')),
+                  );
+                } catch (e) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error updating profile: $e')),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -167,6 +241,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('', style: TextStyle(fontSize: 18)),
+                                        IconButton(
+                                          icon: const Icon(Icons.edit, color: Colors.deepPurple),
+                                          tooltip: 'Edit Profile',
+                                          onPressed: () => _showEditProfileDialog(context, user),
+                                        ),
+                                      ],
+                                    ),
                                     Row(
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
