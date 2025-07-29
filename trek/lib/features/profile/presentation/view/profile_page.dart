@@ -155,7 +155,7 @@ class ProfilePage extends StatelessWidget {
                                           const SizedBox(width: 14),
                                           Expanded(
                                             child: Text(
-                                              user.phone.isNotEmpty ? user.phone : '-',
+                                              (user.phone != null && user.phone.isNotEmpty) ? user.phone : '-',
                                               style: const TextStyle(fontSize: 18),
                                             ),
                                           ),

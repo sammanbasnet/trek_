@@ -21,24 +21,23 @@ class AuthRepositoryImpl implements AuthRepository {
       // Try remote login first
       final loginResult = await remoteDataSource.login(email, password);
       
-      // Create a basic user entity from login response
-      // We'll get the full user details later if needed
+      // Fetch full user profile after login
+      final userId = loginResult['userId'];
+      final userProfile = await remoteDataSource.getCurrentUser(userId);
       final userEntity = UserEntity(
-        id: loginResult['userId'],
-        firstName: '', // We'll get this from local storage or skip for now
-        lastName: '',
-        email: email,
-        phone: '',
-        image: '',
-        role: loginResult['role'] ?? 'customer',
+        id: userProfile.id,
+        firstName: userProfile.firstName,
+        lastName: userProfile.lastName,
+        email: userProfile.email,
+        phone: userProfile.phone,
+        image: userProfile.image ?? '',
+        role: userProfile.role,
       );
-      
       // Store user info locally for persistence
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_email', email);
-      await prefs.setString('user_id', loginResult['userId']);
-      await prefs.setString('user_role', loginResult['role'] ?? 'customer');
-      
+      await prefs.setString('user_email', userProfile.email);
+      await prefs.setString('user_id', userProfile.id ?? '');
+      await prefs.setString('user_role', userProfile.role);
       return Right(userEntity);
     } catch (e) {
       print('Remote login failed: $e');
