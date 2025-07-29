@@ -8,6 +8,7 @@ class TripDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('TripDetailPage image URL: ${trip['image']}');
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -21,22 +22,33 @@ class TripDetailPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Column(
-        children: [
-          Image.network(
-            trip['image']!,
-            height: MediaQuery.of(context).size.height * 0.4,
-            width: double.infinity,
-            fit: BoxFit.cover,
-          ),
-          Expanded(
-            child: Container(
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Image.network(
+              (trip['image'] != null && trip['image']!.isNotEmpty)
+                  ? trip['image']!
+                  : 'https://via.placeholder.com/300x200',
+              height: MediaQuery.of(context).size.height * 0.35,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: MediaQuery.of(context).size.height * 0.35,
+                  width: double.infinity,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.image, color: Colors.grey, size: 60),
+                );
+              },
+            ),
+            Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    trip['title']!,
+                    trip['title'] ?? '',
                     style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
@@ -45,22 +57,22 @@ class TripDetailPage extends StatelessWidget {
                       const Icon(Icons.location_on, color: Colors.grey, size: 20),
                       const SizedBox(width: 5),
                       Text(
-                        trip['location']!,
+                        trip['location'] ?? '',
                         style: const TextStyle(fontSize: 16, color: Colors.grey),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    trip['description']!,
+                    trip['description'] ?? '',
                     style: const TextStyle(fontSize: 16, height: 1.5),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 40),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        trip['price']!,
+                        trip['price'] ?? '',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -90,8 +102,8 @@ class TripDetailPage extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

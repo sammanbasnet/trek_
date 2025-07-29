@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // Base URL - change this to your backend URL when running
-  static const String baseUrl = 'http://192.168.1.16:3000/api/v1'; // For Android emulator
+  static const String baseUrl = 'http://10.0.2.2:3000/api/v1'; // For Android emulator
   // static const String baseUrl = 'http://localhost:3000/api/v1'; // For iOS simulator
   // static const String baseUrl = 'http://<your-pc-ip>:3000/api/v1'; // For physical device
 

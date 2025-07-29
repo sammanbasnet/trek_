@@ -25,14 +25,14 @@ class _HomeContentState extends State<HomeContent> {
   Future<void> fetchPackages() async {
     try {
       print('HomeContent: Fetching packages...');
-      print('HomeContent: URL: http://192.168.1.16:3000/api/v1/package');
+      print('HomeContent: URL: http://10.0.2.2:3000/api/v1/package');
       setState(() {
         isLoading = true;
         error = null;
       });
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.16:3000/api/v1/package'),
+        Uri.parse('http://10.0.2.2:3000/api/v1/package'),
       );
 
       print('HomeContent: Response status: ${response.statusCode}');
@@ -188,9 +188,9 @@ class _HomeContentState extends State<HomeContent> {
                           'location': package['location'] ?? '',
                           'price': '\$${package['price']?.toString() ?? '0'} /visit',
                           'rating': '4.5',
-                          'image': package['image'] != null 
-                              ? 'http://192.168.1.16:3000/uploads/${package['image']}'
-                              : 'https://i.pinimg.com/736x/86/82/e1/8682e16c492f150bd46e07e421adf5f2.jpg',
+                          'image': (package['image'] != null && package['image'].toString().isNotEmpty)
+                              ? 'http://10.0.2.2:3000/uploads/${package['image'].toString().split('/').last}'
+                              : 'https://via.placeholder.com/300x200',
                           'description': package['description'] ?? '',
                         }),
                     ),
@@ -215,22 +215,22 @@ class _HomeContentState extends State<HomeContent> {
                     children: [
                       ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                          child: Image.network(
-                            package['image'] != null 
-                                ? 'http://192.168.1.16:3000/uploads/${package['image']}'
-                                : 'https://i.pinimg.com/736x/86/82/e1/8682e16c492f150bd46e07e421adf5f2.jpg',
-                            height: 120, 
-                            width: double.infinity, 
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 120,
-                                width: double.infinity,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.image, color: Colors.grey),
-                              );
-                            },
-                          ),
+                        child: Image.network(
+                          (package['image'] != null && package['image'].toString().isNotEmpty)
+                              ? 'http://10.0.2.2:3000/uploads/${package['image']}'
+                              : 'https://via.placeholder.com/150',
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 120,
+                              width: double.infinity,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.image, color: Colors.grey),
+                            );
+                          },
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(8),
