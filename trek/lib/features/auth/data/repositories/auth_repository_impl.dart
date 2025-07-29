@@ -104,15 +104,16 @@ class AuthRepositoryImpl implements AuthRepository {
       final userEmail = prefs.getString('user_email');
       
       if (userId != null) {
-        // Return basic user info from local storage
+        // Fetch full user profile from backend
+        final userProfile = await remoteDataSource.getCurrentUser(userId);
         return Right(UserEntity(
-          id: userId,
-          firstName: '', // We can add this later if needed
-          lastName: '',
-          email: userEmail ?? '', // Get email from local storage
-          phone: '',
-          image: '',
-          role: userRole ?? 'customer',
+          id: userProfile.id,
+          firstName: userProfile.firstName,
+          lastName: userProfile.lastName,
+          email: userProfile.email,
+          phone: userProfile.phone,
+          image: userProfile.image ?? '',
+          role: userProfile.role,
         ));
       } else {
         return Left('No user logged in');
