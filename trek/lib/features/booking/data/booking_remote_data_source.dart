@@ -10,7 +10,14 @@ class BookingRemoteDataSource {
       : client = client ?? http.Client();
 
   Future<List<BookingModel>> fetchBookingsForUser(String userId) async {
-    final response = await client.get(Uri.parse('$baseUrl/bookings/user/$userId'));
+    print('BookingRemoteDataSource: Fetching bookings for user: $userId');
+    final url = '$baseUrl/bookings/user/$userId';
+    print('BookingRemoteDataSource: API URL: $url');
+    
+    final response = await client.get(Uri.parse(url));
+    print('BookingRemoteDataSource: Response status: ${response.statusCode}');
+    print('BookingRemoteDataSource: Response body: ${response.body}');
+    
     if (response.statusCode == 200) {
       final decoded = json.decode(response.body);
       final List<dynamic> data;
@@ -19,10 +26,13 @@ class BookingRemoteDataSource {
       } else if (decoded is Map && decoded['data'] is List) {
         data = decoded['data'];
       } else {
+        print('BookingRemoteDataSource: Unexpected response format: $decoded');
         throw Exception('Unexpected response format');
       }
+      print('BookingRemoteDataSource: Parsed ${data.length} bookings');
       return data.map((json) => BookingModel.fromJson(json)).toList();
     } else {
+      print('BookingRemoteDataSource: Failed to load bookings. Status: ${response.statusCode}, Body: ${response.body}');
       throw Exception('Failed to load bookings');
     }
   }

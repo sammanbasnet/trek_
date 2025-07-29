@@ -5,6 +5,7 @@ import '../../../../core/network/api_endpoints.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io'; // Added for HttpServer
 import 'package:http_parser/http_parser.dart'; // Added for ContentType
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SimpleBookingPage extends StatefulWidget {
   final Map<String, String> package;
@@ -26,10 +27,26 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
   Future<void> _bookAfterEsewaSuccess() async {
     setState(() { _isLoading = true; });
     try {
+      // Get current user ID from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      final userEmail = prefs.getString('user_email');
+      
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Error: User not logged in'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
       final bookingData = {
+        'userId': userId,
         'packageId': widget.package['id'] ?? 'test-package',
-        'fullName': 'eSewa User',
-        'email': 'esewa@example.com',
+        'fullName': 'Trek User',
+        'email': userEmail ?? 'user@example.com',
         'phone': '9800000000',
         'tickets': 1,
         'pickupLocation': 'Default Location',
@@ -47,6 +64,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
             backgroundColor: Colors.green,
           ),
         );
+        // Navigate back to previous page
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -4,28 +4,75 @@ import '../booking_cubit.dart';
 import '../../data/booking_repository_impl.dart';
 import '../../data/booking_remote_data_source.dart';
 import '../../../../core/network/api_endpoints.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class BookingsPage extends StatelessWidget {
+class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
 
   @override
+  State<BookingsPage> createState() => _BookingsPageState();
+}
+
+class _BookingsPageState extends State<BookingsPage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    print('BookingsPage: build method called');
+    // Get current user ID from SharedPreferences
+    Future<String?> getCurrentUserId() async {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('user_id');
+    }
+    
     final repository = BookingRepositoryImpl(
       BookingRemoteDataSource(baseUrl: ApiEndpoints.baseUrl),
     );
     return BlocProvider(
-      create: (_) => BookingCubit(repository)..fetchAllBookings(),
+      create: (_) {
+        final cubit = BookingCubit(repository);
+        // Initialize bookings fetch after the cubit is created
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          print('BookingsPage: Initializing bookings fetch');
+          cubit.fetchUserBookings();
+        });
+        return cubit;
+      },
       child: Scaffold(
       appBar: AppBar(
         title: const Text('My Bookings'),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              print('BookingsPage: Manual refresh triggered');
+              context.read<BookingCubit>().fetchUserBookings();
+            },
+          ),
+        ],
       ),
         body: BlocBuilder<BookingCubit, BookingState>(
           builder: (context, state) {
+            print('BookingsPage: State changed to: ${state.runtimeType}');
             if (state is BookingLoading) {
               return const Center(child: CircularProgressIndicator());
             } else if (state is BookingLoaded) {
+              print('BookingsPage: Loaded ${state.bookings.length} bookings');
               if (state.bookings.isEmpty) {
+                print('BookingsPage: No bookings found');
                 return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -39,7 +86,11 @@ class BookingsPage extends StatelessWidget {
                   ),
                 );
               }
-              return ListView.builder(
+              return RefreshIndicator(
+                onRefresh: () async {
+                  context.read<BookingCubit>().fetchUserBookings();
+                },
+                child: ListView.builder(
                 itemCount: state.bookings.length,
                 itemBuilder: (context, index) {
                   final booking = state.bookings[index];
@@ -170,7 +221,8 @@ class BookingsPage extends StatelessWidget {
                     ),
                   );
                 },
-              );
+              ),
+            );
             } else if (state is BookingError) {
               return Center(child: Text('Error:  ${state.message}'));
             }
