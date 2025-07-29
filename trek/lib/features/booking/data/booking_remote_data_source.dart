@@ -54,4 +54,22 @@ class BookingRemoteDataSource {
       throw Exception('Failed to create booking: $e');
     }
   }
+
+  Future<List<BookingModel>> fetchAllBookings() async {
+    final response = await client.get(Uri.parse('$baseUrl/bookings'));
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      final List<dynamic> data;
+      if (decoded is List) {
+        data = decoded;
+      } else if (decoded is Map && decoded['data'] is List) {
+        data = decoded['data'];
+      } else {
+        throw Exception('Unexpected response format');
+      }
+      return data.map((json) => BookingModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load bookings');
+    }
+  }
 } 

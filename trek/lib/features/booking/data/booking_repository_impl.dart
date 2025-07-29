@@ -3,6 +3,7 @@ import 'booking_model.dart';
 
 abstract class BookingRepository {
   Future<List<BookingModel>> getBookingsForUser(String userId);
+  Future<List<BookingModel>> getAllBookings();
   Future<void> createBooking(Map<String, dynamic> bookingData);
 }
 
@@ -14,6 +15,11 @@ class BookingRepositoryImpl implements BookingRepository {
   @override
   Future<List<BookingModel>> getBookingsForUser(String userId) {
     return remoteDataSource.fetchBookingsForUser(userId);
+  }
+
+  @override
+  Future<List<BookingModel>> getAllBookings() {
+    return remoteDataSource.fetchAllBookings();
   }
 
   @override
