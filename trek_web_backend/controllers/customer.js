@@ -159,18 +159,31 @@ exports.deleteCustomer = asyncHandler(async (req, res, next) => {
     }
 });
 
-// @desc    Upload Single Image
-// @route   POST /api/v1/customers/upload
+// @desc    Upload Single Image and update user's image field
+// @route   POST /api/v1/customers/uploadImage
 // @access  Private (Only Logged-in Users)
 exports.uploadImage = asyncHandler(async (req, res, next) => {
     if (!req.file) {
         return res.status(400).json({ message: "Please upload a file" });
     }
 
+    // Get user ID from auth middleware (assuming req.user is set)
+    const userId = req.user.id;
+    if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    // Update the user's image field
+    const updatedUser = await Customer.findByIdAndUpdate(
+        userId,
+        { image: req.file.filename },
+        { new: true }
+    );
+
     res.status(200).json({
         success: true,
-        message: "Image uploaded successfully",
-        data: req.file.filename,
+        message: "Image uploaded and profile updated successfully",
+        data: updatedUser, // return the updated user object
     });
 });
 

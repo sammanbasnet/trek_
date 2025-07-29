@@ -34,7 +34,8 @@ class _ProfilePageState extends State<ProfilePage> {
         data: formData,
       );
       if (response.statusCode == 200 && response.data['data'] != null) {
-        setState(() { _uploadedImage = response.data['data']; });
+        final updatedUser = response.data['data'];
+        setState(() { _uploadedImage = updatedUser['image']; });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Profile picture updated!')),
         );
