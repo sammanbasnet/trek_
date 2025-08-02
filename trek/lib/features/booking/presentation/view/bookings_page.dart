@@ -5,6 +5,9 @@ import '../../data/booking_repository_impl.dart';
 import '../../data/booking_remote_data_source.dart';
 import '../../../../core/network/api_endpoints.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../auth/data/repositories/auth_repository_impl.dart';
+import '../../../auth/data/datasources/auth_local_data_source.dart';
+import '../../../auth/data/datasources/auth_remote_data_source.dart';
 
 class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
@@ -14,17 +17,72 @@ class BookingsPage extends StatefulWidget {
 }
 
 class _BookingsPageState extends State<BookingsPage> with AutomaticKeepAliveClientMixin {
+  String? currentUserName;
+  
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUserName();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+  }
+
+  Future<void> _loadCurrentUserName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userEmail = prefs.getString('user_email');
+      
+      if (userEmail != null) {
+        // Try to get user name from SharedPreferences first
+        final firstName = prefs.getString('user_first_name');
+        final lastName = prefs.getString('user_last_name');
+        
+        if (firstName != null && lastName != null) {
+          setState(() {
+            currentUserName = '$firstName $lastName';
+          });
+        } else {
+          // If not in SharedPreferences, fetch from backend
+          final userId = prefs.getString('user_id');
+          if (userId != null) {
+            // Import the auth repository to fetch user data
+            final authRepository = AuthRepositoryImpl(
+              localDataSource: AuthLocalDataSourceImpl(),
+              remoteDataSource: AuthRemoteDataSourceImpl(),
+            );
+            
+            final userResult = await authRepository.getCurrentUser();
+            userResult.fold(
+              (error) {
+                print('Error fetching user: $error');
+                setState(() {
+                  currentUserName = 'User';
+                });
+              },
+              (user) {
+                setState(() {
+                  currentUserName = '${user.firstName} ${user.lastName}';
+                });
+                // Store in SharedPreferences for future use
+                prefs.setString('user_first_name', user.firstName);
+                prefs.setString('user_last_name', user.lastName);
+              },
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error loading current user name: $e');
+      setState(() {
+        currentUserName = 'User';
+      });
+    }
   }
 
   @override
@@ -262,8 +320,8 @@ class _BookingsPageState extends State<BookingsPage> with AutomaticKeepAliveClie
                                       Expanded(
                                         child: _buildInfoCard(
                                           Icons.person,
-                                          'Name',
-                                          booking.fullName,
+                                          'Trek User',
+                                          currentUserName ?? 'User',
                                           Colors.blue,
                                         ),
                                       ),
