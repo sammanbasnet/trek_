@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../../../trips/presentation/view/trip_detail_page.dart';
 import '../../../booking/presentation/view/bookings_page.dart';
 import 'wishlist_page.dart';
+import 'wishlist_service.dart';
 import '../../../../core/network/api_endpoints.dart';
 
 class SimpleHomeContent extends StatefulWidget {
@@ -241,7 +242,22 @@ class _SimpleHomeContentState extends State<SimpleHomeContent> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text('\$${package['price']?.toString() ?? '0'} /visit', style: const TextStyle(color: Colors.redAccent)),
-                                  const Icon(Icons.favorite_border, size: 18),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      await _toggleWishlist(package);
+                                    },
+                                                                         child: FutureBuilder<bool>(
+                                       future: WishlistService.isInWishlist(package['_id'] ?? package['title'] ?? ''),
+                                       builder: (context, snapshot) {
+                                         bool isInWishlist = snapshot.data ?? false;
+                                         return Icon(
+                                           isInWishlist ? Icons.favorite : Icons.favorite_border,
+                                           size: 18,
+                                           color: isInWishlist ? Colors.red : Colors.grey,
+                                         );
+                                       },
+                                     ),
+                                  ),
                                 ],
                               ),
                             ],
@@ -366,5 +382,55 @@ class _SimpleHomeContentState extends State<SimpleHomeContent> {
         const SizedBox(height: 20),
       ],
     );
+  }
+
+  Future<void> _toggleWishlist(Map<String, dynamic> package) async {
+    try {
+      String itemId = package['_id'] ?? package['title'] ?? '';
+      if (itemId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Invalid package data'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+      
+      bool isInWishlist = await WishlistService.isInWishlist(itemId);
+      
+      if (isInWishlist) {
+        await WishlistService.removeFromWishlist(itemId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Removed from wishlist'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        await WishlistService.addToWishlist(package);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added to wishlist'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      
+      // Refresh the UI
+      setState(() {});
+    } catch (e) {
+      print('Error toggling wishlist: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating wishlist'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 } 

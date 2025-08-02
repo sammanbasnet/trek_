@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'wishlist_service.dart';
 
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
@@ -8,22 +9,24 @@ class WishlistPage extends StatefulWidget {
 }
 
 class _WishlistPageState extends State<WishlistPage> {
-  List<Map<String, dynamic>> wishlistItems = [
-    {
-      'title': 'Everest Base Camp Trek',
-      'price': '\$2000',
-      'duration': '14 days',
-      'image': 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=400&h=300&fit=crop',
-      'rating': '4.8',
-    },
-    {
-      'title': 'Annapurna Circuit Trek',
-      'price': '\$1800',
-      'duration': '12 days',
-      'image': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop',
-      'rating': '4.7',
-    },
-  ];
+  List<Map<String, dynamic>> wishlistItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWishlistItems();
+  }
+
+  Future<void> _loadWishlistItems() async {
+    try {
+      final items = await WishlistService.getWishlistItems();
+      setState(() {
+        wishlistItems = items;
+      });
+    } catch (e) {
+      print('Error loading wishlist items: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,11 +144,11 @@ class _WishlistPageState extends State<WishlistPage> {
                   width: double.infinity,
                   child: Stack(
                     children: [
-                      Image.network(
-                        item['image'],
-                        width: double.infinity,
-                        height: 200,
-                        fit: BoxFit.cover,
+                                             Image.network(
+                         item['image'] ?? 'https://via.placeholder.com/400x200',
+                         width: double.infinity,
+                         height: 200,
+                         fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
                           return Container(
@@ -184,10 +187,10 @@ class _WishlistPageState extends State<WishlistPage> {
                         top: 10,
                         right: 10,
                         child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              wishlistItems.removeAt(index);
-                            });
+                          onTap: () async {
+                            String itemId = item['_id'] ?? item['title'];
+                            await WishlistService.removeFromWishlist(itemId);
+                            await _loadWishlistItems(); // Reload the list
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Removed from wishlist'),
@@ -223,7 +226,7 @@ class _WishlistPageState extends State<WishlistPage> {
                         children: [
                           Expanded(
                             child: Text(
-                              item['title'],
+                              item['title'] ?? 'Trek Package',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -231,20 +234,20 @@ class _WishlistPageState extends State<WishlistPage> {
                               ),
                             ),
                           ),
-                          Row(
-                            children: [
-                              Icon(Icons.star, color: Colors.amber, size: 16),
-                              SizedBox(width: 4),
-                              Text(
-                                item['rating'],
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ],
-                          ),
+                                                     Row(
+                             children: [
+                               Icon(Icons.star, color: Colors.amber, size: 16),
+                               SizedBox(width: 4),
+                               Text(
+                                 _formatRating(item['rating']),
+                                 style: TextStyle(
+                                   fontSize: 14,
+                                   fontWeight: FontWeight.bold,
+                                   color: Colors.grey[700],
+                                 ),
+                               ),
+                             ],
+                           ),
                         ],
                       ),
                       SizedBox(height: 8),
@@ -253,7 +256,7 @@ class _WishlistPageState extends State<WishlistPage> {
                           Icon(Icons.access_time, color: Colors.grey[600], size: 16),
                           SizedBox(width: 4),
                           Text(
-                            item['duration'],
+                            item['duration'] ?? '14 days',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[600],
@@ -262,14 +265,14 @@ class _WishlistPageState extends State<WishlistPage> {
                           SizedBox(width: 20),
                           Icon(Icons.attach_money, color: Colors.green, size: 16),
                           SizedBox(width: 4),
-                          Text(
-                            item['price'],
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
+                                                     Text(
+                             _formatPrice(item['price']),
+                             style: TextStyle(
+                               fontSize: 16,
+                               fontWeight: FontWeight.bold,
+                               color: Colors.green,
+                             ),
+                           ),
                         ],
                       ),
                       SizedBox(height: 16),
@@ -312,5 +315,33 @@ class _WishlistPageState extends State<WishlistPage> {
         );
       },
     );
+  }
+
+  String _formatPrice(dynamic price) {
+    if (price == null) return '\$0 /visit';
+    
+    if (price is int) {
+      return '\$$price /visit';
+    } else if (price is double) {
+      return '\$${price.toInt()} /visit';
+    } else if (price is String) {
+      return price;
+    } else {
+      return '\$${price.toString()} /visit';
+    }
+  }
+
+  String _formatRating(dynamic rating) {
+    if (rating == null) return '4.5';
+    
+    if (rating is int) {
+      return rating.toString();
+    } else if (rating is double) {
+      return rating.toStringAsFixed(1);
+    } else if (rating is String) {
+      return rating;
+    } else {
+      return rating.toString();
+    }
   }
 } 
