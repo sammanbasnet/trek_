@@ -54,15 +54,6 @@ class _BookingsPageState extends State<BookingsPage> with AutomaticKeepAliveClie
       appBar: AppBar(
         title: const Text('My Bookings'),
         automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              print('BookingsPage: Manual refresh triggered');
-              context.read<BookingCubit>().fetchUserBookings();
-            },
-          ),
-        ],
       ),
         body: BlocBuilder<BookingCubit, BookingState>(
           builder: (context, state) {
@@ -88,6 +79,7 @@ class _BookingsPageState extends State<BookingsPage> with AutomaticKeepAliveClie
               }
               return RefreshIndicator(
                 onRefresh: () async {
+                  // Use the context from BlocBuilder which has access to the provider
                   context.read<BookingCubit>().fetchUserBookings();
                 },
                 child: ListView.builder(

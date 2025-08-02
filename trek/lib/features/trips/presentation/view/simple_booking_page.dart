@@ -18,19 +18,23 @@ class SimpleBookingPage extends StatefulWidget {
 
 class _SimpleBookingPageState extends State<SimpleBookingPage> {
   bool _isLoading = false;
+  String? _selectedPaymentMethod;
 
   @override
   void dispose() {
     super.dispose();
   }
 
-  Future<void> _bookAfterEsewaSuccess() async {
+  Future<void> _bookAfterPaymentSuccess(String paymentMethod) async {
     setState(() { _isLoading = true; });
     try {
       // Get current user ID from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('user_id');
       final userEmail = prefs.getString('user_email');
+      
+      print('Booking: User ID from SharedPreferences: $userId');
+      print('Booking: User Email from SharedPreferences: $userEmail');
       
       if (userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -39,6 +43,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
             backgroundColor: Colors.red,
           ),
         );
+        setState(() { _isLoading = false; });
         return;
       }
       
@@ -50,35 +55,58 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
         'phone': '9800000000',
         'tickets': 1,
         'pickupLocation': 'Default Location',
-        'paymentMethod': 'credit-card',
+        'paymentMethod': paymentMethod,
       };
+      
+      print('Booking: Creating booking with data: $bookingData');
+      
       final response = await http.post(
         Uri.parse('${ApiEndpoints.baseUrl}/bookings'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(bookingData),
       );
-      if (response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Booking created successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Navigate back to previous page
-        Navigator.pop(context);
-      } else {
+      
+      print('Booking: Response status: ${response.statusCode}');
+      print('Booking: Response body: ${response.body}');
+      
+      final responseData = json.decode(response.body);
+      
+      if (response.statusCode == 201 && responseData['success'] == true) {
+        // Clear any existing snackbars first
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error: ${response.body}'),
+            content: Text('✅ ${responseData['message'] ?? 'Booking created successfully with $paymentMethod!'}'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        
+        // Navigate back to previous page after a short delay
+        await Future.delayed(Duration(seconds: 2));
+        Navigator.pop(context);
+      } else {
+        // Clear any existing snackbars first
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error: ${responseData['error'] ?? 'Failed to create booking'}'),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
           ),
         );
       }
     } catch (e) {
+      // Clear any existing snackbars first
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Error: $e'),
+          content: Text('❌ Network Error: $e'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
         ),
       );
     } finally {
@@ -232,7 +260,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
         
         // Wait for payment completion then create booking
         await Future.delayed(const Duration(seconds: 10));
-        await _bookAfterEsewaSuccess();
+        await _bookAfterPaymentSuccess('esewa');
         
         // Close the server
         server.close();
@@ -244,7 +272,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
             backgroundColor: Colors.orange,
           ),
         );
-        await _bookAfterEsewaSuccess();
+        await _bookAfterPaymentSuccess('esewa');
         server.close();
       }
       
@@ -260,63 +288,394 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
      }
    }
 
+  Future<void> _handleCashOnArrival() async {
+    setState(() { _isLoading = true; });
+    
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Row(
+            children: [
+              Icon(Icons.money, color: Colors.green, size: 28),
+              SizedBox(width: 10),
+              Text('Cash on Arrival', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('You have selected to pay in cash upon arrival.'),
+              SizedBox(height: 10),
+              Text('Amount to pay: ${widget.package['price']}', 
+                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+              SizedBox(height: 10),
+              Text('Please ensure you have the exact amount ready when you arrive at the pickup location.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text('Confirm Booking', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _bookAfterPaymentSuccess('cash-on-arrival');
+    } else {
+      setState(() { _isLoading = false; });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Book Trip'),
+        title: Text('Book Trip', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.redAccent,
         foregroundColor: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        ),
       ),
-      body: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.redAccent.withOpacity(0.1), Colors.white],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Package Details Card
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 2,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            widget.package['title'] ?? '',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.card_travel, color: Colors.redAccent, size: 24),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Price: ${widget.package['price']}',
-                            style: const TextStyle(fontSize: 16, color: Colors.redAccent),
+                          SizedBox(width: 15),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.package['title'] ?? 'Trek Package',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 5),
+                                Text(
+                                  'Adventure awaits!',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
+                      SizedBox(height: 20),
+                      Container(
+                        padding: EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.attach_money, color: Colors.green, size: 24),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Total Price',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  Text(
+                                    widget.package['price'] ?? '\$1000',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 40),
-                  Center(
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _startEsewaPayment,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              
+              SizedBox(height: 30),
+              
+              // Payment Options
+              Text(
+                'Choose Payment Method',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              SizedBox(height: 20),
+              
+              // eSewa Payment Option
+              GestureDetector(
+                onTap: () => setState(() => _selectedPaymentMethod = 'esewa'),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: _selectedPaymentMethod == 'esewa' ? Colors.green.withOpacity(0.1) : Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: _selectedPaymentMethod == 'esewa' ? Colors.green : Colors.grey.withOpacity(0.3),
+                      width: _selectedPaymentMethod == 'esewa' ? 2 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 5,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.payment, color: Colors.green, size: 24),
+                      ),
+                      SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Pay with eSewa',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              'Secure online payment',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_selectedPaymentMethod == 'esewa')
+                        Icon(Icons.check_circle, color: Colors.green, size: 24),
+                    ],
+                  ),
+                ),
+              ),
+              
+              SizedBox(height: 15),
+              
+              // Cash on Arrival Option
+              GestureDetector(
+                onTap: () => setState(() => _selectedPaymentMethod = 'cash'),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: _selectedPaymentMethod == 'cash' ? Colors.orange.withOpacity(0.1) : Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: _selectedPaymentMethod == 'cash' ? Colors.orange : Colors.grey.withOpacity(0.3),
+                      width: _selectedPaymentMethod == 'cash' ? 2 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 5,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.money, color: Colors.orange, size: 24),
+                      ),
+                      SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Cash on Arrival',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              'Pay when you arrive',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_selectedPaymentMethod == 'cash')
+                        Icon(Icons.check_circle, color: Colors.orange, size: 24),
+                    ],
+                  ),
+                ),
+              ),
+              
+              SizedBox(height: 30),
+              
+              // Proceed Button
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: _isLoading || _selectedPaymentMethod == null
+                      ? null
+                      : _selectedPaymentMethod == 'esewa'
+                          ? _startEsewaPayment
+                          : _handleCashOnArrival,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _selectedPaymentMethod == 'esewa' ? Colors.green : Colors.orange,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    elevation: 3,
+                  ),
+                  child: _isLoading
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          _selectedPaymentMethod == 'esewa'
+                              ? 'Pay with eSewa'
+                              : 'Confirm Cash Payment',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'Pay with eSewa',
-                                style: TextStyle(fontSize: 18, color: Colors.white),
-                              ),
+                ),
+              ),
+              
+              SizedBox(height: 20),
+              
+              // Additional Info
+              Container(
+                padding: EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Your booking will be confirmed immediately. For cash payments, please bring exact change.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 } 

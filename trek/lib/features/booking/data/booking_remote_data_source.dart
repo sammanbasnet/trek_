@@ -21,7 +21,11 @@ class BookingRemoteDataSource {
     if (response.statusCode == 200) {
       final decoded = json.decode(response.body);
       final List<dynamic> data;
-      if (decoded is List) {
+      
+      // Handle the backend response format: { success: true, data: [...] }
+      if (decoded is Map && decoded['success'] == true && decoded['data'] is List) {
+        data = decoded['data'];
+      } else if (decoded is List) {
         data = decoded;
       } else if (decoded is Map && decoded['data'] is List) {
         data = decoded['data'];
