@@ -19,10 +19,20 @@ class SimpleBookingPage extends StatefulWidget {
 class _SimpleBookingPageState extends State<SimpleBookingPage> {
   bool _isLoading = false;
   String? _selectedPaymentMethod;
+  int _ticketCount = 1;
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  double get _totalPrice {
+    final basePrice = double.tryParse(widget.package['price']?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '1000') ?? 1000.0;
+    return basePrice * _ticketCount;
+  }
+
+  String get _formattedPrice {
+    return '\$${_totalPrice.toStringAsFixed(0)} /visit';
   }
 
   Future<void> _bookAfterPaymentSuccess(String paymentMethod) async {
@@ -53,7 +63,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
         'fullName': 'Trek User',
         'email': userEmail ?? 'user@example.com',
         'phone': '9800000000',
-        'tickets': 1,
+        'tickets': _ticketCount,
         'pickupLocation': 'Default Location',
         'paymentMethod': paymentMethod,
       };
@@ -124,7 +134,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
       final mockPaymentUrl = 'https://mock-payment-gateway.vercel.app/esewa';
       
       // Payment details
-      final amt = widget.package['price']?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '1000';
+      final amt = _totalPrice.toStringAsFixed(0);
       final pid = widget.package['id'] ?? 'test-package';
       
       // Show loading message
@@ -310,7 +320,10 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
             children: [
               Text('You have selected to pay in cash upon arrival.'),
               SizedBox(height: 10),
-              Text('Amount to pay: ${widget.package['price']}', 
+              Text('Number of people: $_ticketCount', 
+                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
+              SizedBox(height: 10),
+              Text('Amount to pay: $_formattedPrice', 
                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
               SizedBox(height: 10),
               Text('Please ensure you have the exact amount ready when you arrive at the pickup location.'),
@@ -446,7 +459,7 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                                     ),
                                   ),
                                   Text(
-                                    widget.package['price'] ?? '\$1000',
+                                    _formattedPrice,
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
@@ -454,6 +467,179 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              SizedBox(height: 30),
+              
+              // Ticket Counter Section
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 2,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.people, color: Colors.blue, size: 24),
+                          ),
+                          SizedBox(width: 15),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Number of People',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 5),
+                                Text(
+                                  'Select how many people are joining',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Tickets',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: IconButton(
+                                  onPressed: _ticketCount > 1 ? () {
+                                    setState(() {
+                                      _ticketCount--;
+                                    });
+                                  } : null,
+                                  icon: Icon(Icons.remove, color: Colors.white),
+                                  constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                                ),
+                              ),
+                              Container(
+                                margin: EdgeInsets.symmetric(horizontal: 20),
+                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '$_ticketCount',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: IconButton(
+                                  onPressed: _ticketCount < 10 ? () {
+                                    setState(() {
+                                      _ticketCount++;
+                                    });
+                                  } : null,
+                                  icon: Icon(Icons.add, color: Colors.white),
+                                  constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 15),
+                      Container(
+                        padding: EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total Price',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                Text(
+                                  _formattedPrice,
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.attach_money,
+                                color: Colors.white,
+                                size: 24,
                               ),
                             ),
                           ],
