@@ -78,7 +78,7 @@ class _BookingsPageState extends State<BookingsPage> with AutomaticKeepAliveClie
                     children: [
                       CircularProgressIndicator(color: Colors.redAccent),
                       SizedBox(height: 16),
-                      Text('Loading your bookings...', style: TextStyle(color: Colors.grey[600])),
+                      Text('Loading your bookings...', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
                     ],
                   ),
                 );
