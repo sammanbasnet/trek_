@@ -21,7 +21,7 @@ class WishlistService {
   static Future<bool> addToWishlist(Map<String, dynamic> package) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
+      final userId = prefs.getString('user_id');
       
       if (userId == null) {
         throw Exception('User not logged in');
@@ -71,7 +71,7 @@ class WishlistService {
   static Future<bool> removeFromWishlist(String itemId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
+      final userId = prefs.getString('user_id');
       
       if (userId == null) {
         throw Exception('User not logged in');
@@ -243,7 +243,7 @@ class WishlistService {
   static Future<void> loadFromBackend() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
+      final userId = prefs.getString('user_id');
       
       if (userId == null) {
         return;

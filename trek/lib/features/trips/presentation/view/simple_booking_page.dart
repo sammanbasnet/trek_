@@ -3,6 +3,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/network/api_endpoints.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SimpleBookingPage extends StatefulWidget {
   final Map<String, dynamic> package;
@@ -17,10 +21,122 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
   bool _isLoading = false;
   String? _selectedPaymentMethod;
   int _ticketCount = 1;
+  Position? _currentPosition;
+  String _currentAddress = 'Getting location...';
+  bool _isGettingLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isGettingLocation = true;
+      _currentAddress = 'Getting location...';
+    });
+
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _currentAddress = 'Location services disabled';
+          _isGettingLocation = false;
+        });
+        return;
+      }
+
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _currentAddress = 'Location permission denied';
+            _isGettingLocation = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _currentAddress = 'Location permission permanently denied';
+          _isGettingLocation = false;
+        });
+        return;
+      }
+
+      // Get current position with timeout
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 10),
+      );
+
+      setState(() {
+        _currentPosition = position;
+        _isGettingLocation = false;
+      });
+
+      // Get address from coordinates
+      await _getAddressFromCoordinates(position);
+    } catch (e) {
+      print('Error getting location: $e');
+      setState(() {
+        _currentAddress = 'Location unavailable - using default';
+        _isGettingLocation = false;
+      });
+    }
+  }
+
+  Future<void> _getAddressFromCoordinates(Position position) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        String address = '';
+        
+        if (place.street != null && place.street!.isNotEmpty) {
+          address += place.street!;
+        }
+        if (place.locality != null && place.locality!.isNotEmpty) {
+          if (address.isNotEmpty) address += ', ';
+          address += place.locality!;
+        }
+        if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
+          if (address.isNotEmpty) address += ', ';
+          address += place.administrativeArea!;
+        }
+        if (place.country != null && place.country!.isNotEmpty) {
+          if (address.isNotEmpty) address += ', ';
+          address += place.country!;
+        }
+
+        setState(() {
+          _currentAddress = address.isNotEmpty ? address : 'Location found';
+        });
+      } else {
+        setState(() {
+          _currentAddress = 'Location found (${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)})';
+        });
+      }
+    } catch (e) {
+      print('Error getting address: $e');
+      setState(() {
+        _currentAddress = 'Location found (${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)})';
+      });
+    }
   }
 
   double get _totalPrice {
@@ -46,15 +162,15 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
 
   Future<String?> _getCurrentUserName() async {
     final prefs = await SharedPreferences.getInstance();
-    final firstName = prefs.getString('firstName') ?? '';
-    final lastName = prefs.getString('lastName') ?? '';
+    final firstName = prefs.getString('user_firstName') ?? '';
+    final lastName = prefs.getString('user_lastName') ?? '';
     
     if (firstName.isNotEmpty || lastName.isNotEmpty) {
       return '$firstName $lastName'.trim();
     }
     
     // Fallback to email username
-    final email = prefs.getString('email') ?? '';
+    final email = prefs.getString('user_email') ?? '';
     if (email.isNotEmpty) {
       final username = email.split('@')[0];
       return username.isNotEmpty ? username : 'Trek User';
@@ -67,8 +183,8 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
     setState(() { _isLoading = true; });
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userEmail = prefs.getString('email');
-      final userId = prefs.getString('userId');
+      final userEmail = prefs.getString('user_email');
+      final userId = prefs.getString('user_id');
       final fullName = await _getCurrentUserName();
 
       if (userEmail == null || userId == null) {
@@ -83,20 +199,27 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
         'email': userEmail,
         'phone': '9800000000',
         'tickets': _ticketCount,
-        'pickupLocation': 'Default Location',
+        'pickupLocation': _currentAddress,
         'paymentMethod': paymentMethod,
+        'latitude': _currentPosition?.latitude,
+        'longitude': _currentPosition?.longitude,
       };
 
       print('Creating booking with data: $bookingData');
 
       final response = await http.post(
-        Uri.parse('${ApiEndpoints.baseUrl}/booking'),
+        Uri.parse('${ApiEndpoints.baseUrl}/bookings'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(bookingData),
       );
 
       print('Booking response status: ${response.statusCode}');
       print('Booking response body: ${response.body}');
+
+      // Check if response is HTML (error page)
+      if (response.body.trim().startsWith('<!DOCTYPE html>') || response.body.trim().startsWith('<html')) {
+        throw Exception('Server returned HTML instead of JSON. Please check if the backend server is running.');
+      }
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -155,26 +278,246 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
   Future<void> _handleEsewaPayment() async {
     setState(() { _isLoading = true; });
     try {
-      final mockPaymentUrl = 'https://mock-payment-gateway.vercel.app/esewa';
-
-      // Payment details
-      final amt = _totalPrice.toStringAsFixed(0);
-      final pid = widget.package['id'] ?? 'test-package';
-
       // Show loading message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Redirecting to eSewa payment...'),
+          content: Text('Processing eSewa payment...'),
           backgroundColor: Colors.blue,
           duration: Duration(seconds: 2),
         ),
       );
 
-      // Simulate payment process
-      await Future.delayed(Duration(seconds: 2));
+      // Show mock eSewa payment dialog
+      final paymentResult = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(24),
+                         decoration: BoxDecoration(
+               borderRadius: BorderRadius.circular(20),
+               gradient: LinearGradient(
+                 begin: Alignment.topLeft,
+                 end: Alignment.bottomRight,
+                 colors: [Colors.green.shade400, Colors.green.shade600],
+               ),
+             ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // eSewa Logo and Header
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                                             child: Icon(Icons.payment, color: Colors.green.shade600, size: 32),
+                    ),
+                    SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'eSewa',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Digital Payment Gateway',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24),
+                
+                // Payment Details Card
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Amount Section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Amount to Pay:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                                                     Text(
+                             '\$${_totalPrice.toStringAsFixed(0)}',
+                             style: TextStyle(
+                               fontSize: 24,
+                               fontWeight: FontWeight.bold,
+                               color: Colors.green.shade600,
+                             ),
+                           ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      
+                      // Payment Method Selection
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                                                         Icon(Icons.account_balance_wallet, color: Colors.green.shade600, size: 24),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'eSewa Wallet',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                  Text(
+                                    'Pay using your eSewa balance',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                                                         Icon(Icons.check_circle, color: Colors.green.shade600, size: 24),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      
+                      // Processing Animation
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                                                         child: CircularProgressIndicator(
+                               strokeWidth: 2,
+                               valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+                             ),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Processing payment...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24),
+                
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.white, width: 2),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                                                 style: ElevatedButton.styleFrom(
+                           backgroundColor: Colors.white,
+                           foregroundColor: Colors.green.shade600,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Confirm Payment',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 
-      // Simulate successful payment
-      await _bookAfterPaymentSuccess('esewa');
+      if (paymentResult == true) {
+        // Simulate payment processing
+        await Future.delayed(Duration(seconds: 2));
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('eSewa payment successful!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        // Create booking after successful payment
+        await _bookAfterPaymentSuccess('esewa');
+      }
     } catch (e) {
       print('eSewa payment error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -444,6 +787,84 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              
+              SizedBox(height: 20),
+              
+              // Location Section
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.blue.shade200,
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 3,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, color: Colors.blue, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Pickup Location',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        Spacer(),
+                        if (_isGettingLocation)
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      _currentAddress,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: _getCurrentLocation,
+                          icon: Icon(Icons.refresh, color: Colors.blue, size: 18),
+                          tooltip: 'Refresh Location',
+                        ),
+                        Text(
+                          'Tap to refresh location',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               

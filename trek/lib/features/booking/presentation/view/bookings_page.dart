@@ -359,6 +359,24 @@ class _BookingsPageState extends State<BookingsPage> with AutomaticKeepAliveClie
                                       ),
                                     ],
                                   ),
+                                  SizedBox(height: 12),
+                                  // Location Info
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildInfoCard(
+                                          Icons.location_on,
+                                          'Pickup',
+                                          booking.pickupLocation ?? 'Location not set',
+                                          Colors.red,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Container(), // Empty space for layout
+                                      ),
+                                    ],
+                                  ),
                                   SizedBox(height: 20),
                                   // Price Section
                                   Container(

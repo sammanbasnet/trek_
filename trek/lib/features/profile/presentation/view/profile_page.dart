@@ -22,9 +22,9 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isUploading = false;
   String? _uploadedImage;
 
-  Future<void> _pickAndUploadImage(String userId, String token) async {
+  Future<void> _pickAndUploadImage(String userId, String token, {ImageSource source = ImageSource.gallery}) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await picker.pickImage(source: source);
     if (pickedFile == null) return;
     setState(() { _isUploading = true; });
     try {
@@ -59,6 +59,58 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally {
       setState(() { _isUploading = false; });
     }
+  }
+
+  void _showImageSourceDialog(BuildContext context, UserEntity user) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Choose Image Source'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.blue),
+                title: const Text('Camera'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    final userId = prefs.getString('user_id') ?? '';
+                    final token = prefs.getString('auth_token') ?? '';
+                    await _pickAndUploadImage(userId, token, source: ImageSource.camera);
+                  } catch (e) {
+                    print('Error in camera tap: ' + e.toString());
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.green),
+                title: const Text('Gallery'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    final userId = prefs.getString('user_id') ?? '';
+                    final token = prefs.getString('auth_token') ?? '';
+                    await _pickAndUploadImage(userId, token, source: ImageSource.gallery);
+                  } catch (e) {
+                    print('Error in gallery tap: ' + e.toString());
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showEditProfileDialog(BuildContext context, UserEntity user) {
@@ -202,16 +254,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 backgroundColor: Colors.white,
                                 elevation: 4,
                                 mini: true,
-                                onPressed: () async {
-                                  try {
-                                    final prefs = await SharedPreferences.getInstance();
-                                    final userId = prefs.getString('user_id') ?? '';
-                                    final token = prefs.getString('auth_token') ?? '';
-                                    await _pickAndUploadImage(userId, token);
-                                  } catch (e) {
-                                    print('Error in camera icon tap: ' + e.toString());
-                                  }
-                                },
+                                onPressed: () => _showImageSourceDialog(context, user),
                                 child: const Icon(Icons.camera_alt, color: Colors.deepPurple, size: 22),
                               ),
                             ],

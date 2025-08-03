@@ -38,6 +38,8 @@ class AuthRepositoryImpl implements AuthRepository {
       await prefs.setString('user_email', userProfile.email);
       await prefs.setString('user_id', userProfile.id ?? '');
       await prefs.setString('user_role', userProfile.role);
+      await prefs.setString('user_firstName', userProfile.firstName);
+      await prefs.setString('user_lastName', userProfile.lastName);
       return Right(userEntity);
     } catch (e) {
       print('Remote login failed: $e');
