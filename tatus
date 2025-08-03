@@ -1,0 +1,251 @@
+[1mdiff --git a/trek/lib/features/trips/presentation/view/simple_booking_page.dart b/trek/lib/features/trips/presentation/view/simple_booking_page.dart[m
+[1mindex 2a7f9f9..2051a31 100644[m
+[1m--- a/trek/lib/features/trips/presentation/view/simple_booking_page.dart[m
+[1m+++ b/trek/lib/features/trips/presentation/view/simple_booking_page.dart[m
+[36m@@ -19,12 +19,22 @@[m [mclass SimpleBookingPage extends StatefulWidget {[m
+ class _SimpleBookingPageState extends State<SimpleBookingPage> {[m
+   bool _isLoading = false;[m
+   String? _selectedPaymentMethod;[m
+[32m+[m[32m  int _ticketCount = 1;[m
+ [m
+   @override[m
+   void dispose() {[m
+     super.dispose();[m
+   }[m
+ [m
+[32m+[m[32m  double get _totalPrice {[m
+[32m+[m[32m    final basePrice = double.tryParse(widget.package['price']?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '1000') ?? 1000.0;[m
+[32m+[m[32m    return basePrice * _ticketCount;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  String get _formattedPrice {[m
+[32m+[m[32m    return '\$${_totalPrice.toStringAsFixed(0)} /visit';[m
+[32m+[m[32m  }[m
+[32m+[m
+   Future<void> _bookAfterPaymentSuccess(String paymentMethod) async {[m
+     setState(() { _isLoading = true; });[m
+     try {[m
+[36m@@ -53,7 +63,7 @@[m [mclass _SimpleBookingPageState extends State<SimpleBookingPage> {[m
+         'fullName': 'Trek User',[m
+         'email': userEmail ?? 'user@example.com',[m
+         'phone': '9800000000',[m
+[31m-        'tickets': 1,[m
+[32m+[m[32m        'tickets': _ticketCount,[m
+         'pickupLocation': 'Default Location',[m
+         'paymentMethod': paymentMethod,[m
+       };[m
+[36m@@ -124,7 +134,7 @@[m [mclass _SimpleBookingPageState extends State<SimpleBookingPage> {[m
+       final mockPaymentUrl = 'https://mock-payment-gateway.vercel.app/esewa';[m
+       [m
+       // Payment details[m
+[31m-      final amt = widget.package['price']?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '1000';[m
+[32m+[m[32m      final amt = _totalPrice.toStringAsFixed(0);[m
+       final pid = widget.package['id'] ?? 'test-package';[m
+       [m
+       // Show loading message[m
+[36m@@ -310,7 +320,10 @@[m [mclass _SimpleBookingPageState extends State<SimpleBookingPage> {[m
+             children: [[m
+               Text('You have selected to pay in cash upon arrival.'),[m
+               SizedBox(height: 10),[m
+[31m-              Text('Amount to pay: ${widget.package['price']}', [m
+[32m+[m[32m              Text('Number of people: $_ticketCount',[m[41m [m
+[32m+[m[32m                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),[m
+[32m+[m[32m              SizedBox(height: 10),[m
+[32m+[m[32m              Text('Amount to pay: $_formattedPrice',[m[41m [m
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),[m
+               SizedBox(height: 10),[m
+               Text('Please ensure you have the exact amount ready when you arrive at the pickup location.'),[m
+[36m@@ -446,7 +459,7 @@[m [mclass _SimpleBookingPageState extends State<SimpleBookingPage> {[m
+                                     ),[m
+                                   ),[m
+                                   Text([m
+[31m-                                    widget.package['price'] ?? '\$1000',[m
+[32m+[m[32m                                    _formattedPrice,[m
+                                     style: TextStyle([m
+                                       fontSize: 24,[m
+                                       fontWeight: FontWeight.bold,[m
+[36m@@ -466,6 +479,179 @@[m [mclass _SimpleBookingPageState extends State<SimpleBookingPage> {[m
+               [m
+               SizedBox(height: 30),[m
+               [m
+[32m+[m[32m              // Ticket Counter Section[m
+[32m+[m[32m              Container([m
+[32m+[m[32m                width: double.infinity,[m
+[32m+[m[32m                decoration: BoxDecoration([m
+[32m+[m[32m                  color: Colors.white,[m
+[32m+[m[32m                  borderRadius: BorderRadius.circular(20),[m
+[32m+[m[32m                  boxShadow: [[m
+[32m+[m[32m                    BoxShadow([m
+[32m+[m[32m                      color: Colors.grey.withOpacity(0.2),[m
+[32m+[m[32m                      spreadRadius: 2,[m
+[32m+[m[32m                      blurRadius: 10,[m
+[32m+[m[32m                      offset: Offset(0, 4),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  ],[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                child: Padding([m
+[32m+[m[32m                  padding: const EdgeInsets.all(20),[m
+[32m+[m[32m                  child: Column([m
+[32m+[m[32m                    crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m                    children: [[m
+[32m+[m[32m                      Row([m
+[32m+[m[32m                        children: [[m
+[32m+[m[32m                          Container([m
+[32m+[m[32m                            padding: EdgeInsets.all(12),[m
+[32m+[m[32m                            decoration: BoxDecoration([m
+[32m+[m[32m                              color: Colors.blue.withOpacity(0.1),[m
+[32m+[m[32m                              borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                            child: Icon(Icons.people, color: Colors.blue, size: 24),[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                          SizedBox(width: 15),[m
+[32m+[m[32m                          Expanded([m
+[32m+[m[32m                            child: Column([m
+[32m+[m[32m                              crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m                              children: [[m
+[32m+[m[32m                                Text([m
+[32m+[m[32m                                  'Number of People',[m
+[32m+[m[32m                                  style: TextStyle([m
+[32m+[m[32m                                    fontSize: 18,[m
+[32m+[m[32m                                    fontWeight: FontWeight.bold,[m
+[32m+[m[32m                                    color: Colors.grey[800],[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                                SizedBox(height: 5),[m
+[32m+[m[32m                                Text([m
+[32m+[m[32m                                  'Select how many people are joining',[m
+[32m+[m[32m                                  style: TextStyle([m
+[32m+[m[32m                                    fontSize: 14,[m
+[32m+[m[32m                                    color: Colors.grey[600],[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ],[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                        ],[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      SizedBox(height: 20),[m
+[32m+[m[32m                      Row([m
+[32m+[m[32m                        mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[32m+[m[32m                        children: [[m
+[32m+[m[32m                          Text([m
+[32m+[m[32m                            'Tickets',[m
+[32m+[m[32m                            style: TextStyle([m
+[32m+[m[32m                              fontSize: 16,[m
+[32m+[m[32m                              fontWeight: FontWeight.bold,[m
+[32m+[m[32m                              color: Colors.grey[700],[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                          Row([m
+[32m+[m[32m                            children: [[m
+[32m+[m[32m                              Container([m
+[32m+[m[32m                                decoration: BoxDecoration([m
+[32m+[m[32m                                  color: Colors.redAccent,[m
+[32m+[m[32m                                  borderRadius: BorderRadius.circular(8),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                                child: IconButton([m
+[32m+[m[32m                                  onPressed: _ticketCount > 1 ? () {[m
+[32m+[m[32m                                    setState(() {[m
+[32m+[m[32m                                      _ticketCount--;[m
+[32m+[m[32m                                    });[m
+[32m+[m[32m                                  } : null,[m
+[32m+[m[32m                                  icon: Icon(Icons.remove, color: Colors.white),[m
+[32m+[m[32m                                  constraints: BoxConstraints(minWidth: 40, minHeight: 40),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                              Container([m
+[32m+[m[32m                                margin: EdgeInsets.symmetric(horizontal: 20),[m
+[32m+[m[32m                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),[m
+[32m+[m[32m                                decoration: BoxDecoration([m
+[32m+[m[32m                                  color: Colors.grey[100],[m
+[32m+[m[32m                                  borderRadius: BorderRadius.circular(8),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                                child: Text([m
+[32m+[m[32m                                  '$_ticketCount',[m
+[32m+[m[32m                                  style: TextStyle([m
+[32m+[m[32m                                    fontSize: 18,[m
+[32m+[m[32m                                    fontWeight: FontWeight.bold,[m
+[32m+[m[32m                                    color: Colors.grey[800],[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                              Container([m
+[32m+[m[32m                                decoration: BoxDecoration([m
+[32m+[m[32m                                  color: Colors.redAccent,[m
+[32m+[m[32m                                  borderRadius: BorderRadius.circular(8),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                                child: IconButton([m
+[32m+[m[32m                                  onPressed: _ticketCount < 10 ? () {[m
+[32m+[m[32m                                    setState(() {[m
+[32m+[m[32m                                      _ticketCount++;[m
+[32m+[m[32m                                    });[m
+[32m+[m[32m                                  } : null,[m
+[32m+[m[32m                                  icon: Icon(Icons.add, color: Colors.white),[m
+[32m+[m[32m                                  constraints: BoxConstraints(minWidth: 40, minHeight: 40),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                            ],[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                        ],[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      SizedBox(height: 15),[m
+[32m+[m[32m                      Container([m
+[32m+[m[32m                        padding: EdgeInsets.all(15),[m
+[32m+[m[32m                        decoration: BoxDecoration([m
+[32m+[m[32m                          color: Colors.green.withOpacity(0.1),[m
+[32m+[m[32m                          borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                          border: Border.all(color: Colors.green.withOpacity(0.3)),[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                        child: Row([m
+[32m+[m[32m                          mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[32m+[m[32m                          children: [[m
+[32m+[m[32m                            Column([m
+[32m+[m[32m                              crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m                              children: [[m
+[32m+[m[32m                                Text([m
+[32m+[m[32m                                  'Total Price',[m
+[32m+[m[32m                                  style: TextStyle([m
+[32m+[m[32m                                    fontSize: 14,[m
+[32m+[m[32m                                    color: Colors.grey[600],[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                                Text([m
+[32m+[m[32m                                  _formattedPrice,[m
+[32m+[m[32m                                  style: TextStyle([m
+[32m+[m[32m                                    fontSize: 20,[m
+[32m+[m[32m                                    fontWeight: FontWeight.bold,[m
+[32m+[m[32m                                    color: Colors.green,[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ],[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                            Container([m
+[32m+[m[32m                              padding: EdgeInsets.all(8),[m
+[32m+[m[32m                              decoration: BoxDecoration([m
+[32m+[m[32m                                color: Colors.green,[m
+[32m+[m[32m                                borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                              child: Icon([m
+[32m+[m[32m                                Icons.attach_money,[m
+[32m+[m[32m                                color: Colors.white,[m
+[32m+[m[32m                                size: 24,[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                          ],[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    ],[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ),[m
+[32m+[m[41m              [m
+[32m+[m[32m              SizedBox(height: 30),[m
+[32m+[m[41m              [m
+               // Payment Options[m
+               Text([m
+                 'Choose Payment Method',[m
+[33mcb3c4f8[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Implement functional wishlist with heart icons and fix type conversion errors
+[33mb78dacd[m Revert to original state: Remove Popular Destinations section and restore SimpleHomeContent
+[33ma009a52[m Add wishlist page for user favorites
+[33m7bab46c[m Update bookings page to show current user name instead of booking name
+[33md0a0406[m Update home content and booking page

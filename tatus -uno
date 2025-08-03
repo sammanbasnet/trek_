@@ -1,0 +1,5 @@
+[33mcb3c4f8[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Implement functional wishlist with heart icons and fix type conversion errors
+[33mb78dacd[m Revert to original state: Remove Popular Destinations section and restore SimpleHomeContent
+[33ma009a52[m Add wishlist page for user favorites
+[33m7bab46c[m Update bookings page to show current user name instead of booking name
+[33md0a0406[m Update home content and booking page

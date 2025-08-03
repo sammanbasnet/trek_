@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'wishlist_service.dart';
+import '../../../trips/presentation/view/simple_booking_page.dart';
 
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
@@ -10,6 +11,7 @@ class WishlistPage extends StatefulWidget {
 
 class _WishlistPageState extends State<WishlistPage> {
   List<Map<String, dynamic>> wishlistItems = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -19,13 +21,44 @@ class _WishlistPageState extends State<WishlistPage> {
 
   Future<void> _loadWishlistItems() async {
     try {
+      setState(() {
+        isLoading = true;
+      });
+      
       final items = await WishlistService.getWishlistItems();
+      print('WishlistPage: Loaded ${items.length} items');
+      print('WishlistPage: Items: $items');
+      
       setState(() {
         wishlistItems = items;
+        isLoading = false;
       });
     } catch (e) {
       print('Error loading wishlist items: $e');
+      setState(() {
+        isLoading = false;
+      });
     }
+  }
+
+  Future<void> _clearWishlistData() async {
+    await WishlistService.clearWishlistData();
+    await _loadWishlistItems();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Wishlist data cleared'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
+  void _navigateToBooking(Map<String, dynamic> package) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SimpleBookingPage(package: package),
+      ),
+    );
   }
 
   @override
@@ -39,6 +72,17 @@ class _WishlistPageState extends State<WishlistPage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
         ),
+        actions: [
+          IconButton(
+            onPressed: _loadWishlistItems,
+            icon: Icon(Icons.refresh),
+          ),
+          IconButton(
+            onPressed: _clearWishlistData,
+            icon: Icon(Icons.clear_all),
+            tooltip: 'Clear wishlist data',
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -48,9 +92,11 @@ class _WishlistPageState extends State<WishlistPage> {
             colors: [Colors.redAccent.withOpacity(0.1), Colors.white],
           ),
         ),
-        child: wishlistItems.isEmpty
-            ? _buildEmptyState()
-            : _buildWishlistContent(),
+        child: isLoading
+            ? Center(child: CircularProgressIndicator())
+            : wishlistItems.isEmpty
+                ? _buildEmptyState()
+                : _buildWishlistContent(),
       ),
     );
   }
@@ -120,6 +166,8 @@ class _WishlistPageState extends State<WishlistPage> {
       itemCount: wishlistItems.length,
       itemBuilder: (context, index) {
         final item = wishlistItems[index];
+        print('WishlistPage: Building item $index: ${item['title']}');
+        
         return Container(
           margin: EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
@@ -144,11 +192,11 @@ class _WishlistPageState extends State<WishlistPage> {
                   width: double.infinity,
                   child: Stack(
                     children: [
-                                             Image.network(
-                         item['image'] ?? 'https://via.placeholder.com/400x200',
-                         width: double.infinity,
-                         height: 200,
-                         fit: BoxFit.cover,
+                      Image.network(
+                        item['image'] ?? 'https://via.placeholder.com/400x200',
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
                           return Container(
@@ -234,20 +282,20 @@ class _WishlistPageState extends State<WishlistPage> {
                               ),
                             ),
                           ),
-                                                     Row(
-                             children: [
-                               Icon(Icons.star, color: Colors.amber, size: 16),
-                               SizedBox(width: 4),
-                               Text(
-                                 _formatRating(item['rating']),
-                                 style: TextStyle(
-                                   fontSize: 14,
-                                   fontWeight: FontWeight.bold,
-                                   color: Colors.grey[700],
-                                 ),
-                               ),
-                             ],
-                           ),
+                          Row(
+                            children: [
+                              Icon(Icons.star, color: Colors.amber, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                _formatRating(item['rating']),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                       SizedBox(height: 8),
@@ -265,14 +313,14 @@ class _WishlistPageState extends State<WishlistPage> {
                           SizedBox(width: 20),
                           Icon(Icons.attach_money, color: Colors.green, size: 16),
                           SizedBox(width: 4),
-                                                     Text(
-                             _formatPrice(item['price']),
-                             style: TextStyle(
-                               fontSize: 16,
-                               fontWeight: FontWeight.bold,
-                               color: Colors.green,
-                             ),
-                           ),
+                          Text(
+                            _formatPrice(item['price']),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
                         ],
                       ),
                       SizedBox(height: 16),
@@ -280,15 +328,7 @@ class _WishlistPageState extends State<WishlistPage> {
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Navigate to booking page
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Booking feature coming soon!'),
-                                    backgroundColor: Colors.blue,
-                                  ),
-                                );
-                              },
+                              onPressed: () => _navigateToBooking(item),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.redAccent,
                                 shape: RoundedRectangleBorder(

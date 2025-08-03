@@ -1,17 +1,41 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const wishlistSchema = new mongoose.Schema({
-    customer: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Customer",
-        required: true,
-    },
-    packages: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Package", // Assuming your travel package model is named "Package"
-        }
-    ],
-}, { timestamps: true }); // Automatically adds createdAt & updatedAt
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Customer',
+    required: true
+  },
+  packageId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Package',
+    required: true
+  },
+  packageTitle: {
+    type: String,
+    required: true
+  },
+  packageLocation: {
+    type: String,
+    required: true
+  },
+  packagePrice: {
+    type: Number,
+    required: true
+  },
+  packageImage: {
+    type: String,
+    default: null
+  },
+  addedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true
+});
 
-module.exports = mongoose.model("Wishlist", wishlistSchema);
+// Create compound index to prevent duplicate wishlist items
+wishlistSchema.index({ userId: 1, packageId: 1 }, { unique: true });
+
+module.exports = mongoose.model('Wishlist', wishlistSchema);

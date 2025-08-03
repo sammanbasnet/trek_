@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../../../core/network/api_endpoints.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'dart:io'; // Added for HttpServer
-import 'package:http_parser/http_parser.dart'; // Added for ContentType
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/network/api_endpoints.dart';
 
 class SimpleBookingPage extends StatefulWidget {
-  final Map<String, String> package;
+  final Map<String, dynamic> package;
 
   const SimpleBookingPage({super.key, required this.package});
 
@@ -27,7 +24,19 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
   }
 
   double get _totalPrice {
-    final basePrice = double.tryParse(widget.package['price']?.replaceAll(RegExp(r'[^0-9.]'), '') ?? '1000') ?? 1000.0;
+    final price = widget.package['price'];
+    double basePrice;
+    
+    if (price is int) {
+      basePrice = price.toDouble();
+    } else if (price is double) {
+      basePrice = price;
+    } else if (price is String) {
+      basePrice = double.tryParse(price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 1000.0;
+    } else {
+      basePrice = 1000.0;
+    }
+    
     return basePrice * _ticketCount;
   }
 
@@ -35,88 +44,107 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
     return '\$${_totalPrice.toStringAsFixed(0)} /visit';
   }
 
+  Future<String?> _getCurrentUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final firstName = prefs.getString('firstName') ?? '';
+    final lastName = prefs.getString('lastName') ?? '';
+    
+    if (firstName.isNotEmpty || lastName.isNotEmpty) {
+      return '$firstName $lastName'.trim();
+    }
+    
+    // Fallback to email username
+    final email = prefs.getString('email') ?? '';
+    if (email.isNotEmpty) {
+      final username = email.split('@')[0];
+      return username.isNotEmpty ? username : 'Trek User';
+    }
+    
+    return 'Trek User';
+  }
+
   Future<void> _bookAfterPaymentSuccess(String paymentMethod) async {
     setState(() { _isLoading = true; });
     try {
-      // Get current user ID from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id');
-      final userEmail = prefs.getString('user_email');
-      
-      print('Booking: User ID from SharedPreferences: $userId');
-      print('Booking: User Email from SharedPreferences: $userEmail');
-      
-      if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Error: User not logged in'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() { _isLoading = false; });
-        return;
+      final userEmail = prefs.getString('email');
+      final userId = prefs.getString('userId');
+      final fullName = await _getCurrentUserName();
+
+      if (userEmail == null || userId == null) {
+        throw Exception('User not logged in');
       }
-      
+
       final bookingData = {
         'userId': userId,
-        'packageId': widget.package['id'] ?? 'test-package',
-        'fullName': 'Trek User',
-        'email': userEmail ?? 'user@example.com',
+        'packageId': widget.package['id'],
+        'packageTitle': widget.package['title'],
+        'fullName': fullName,
+        'email': userEmail,
         'phone': '9800000000',
         'tickets': _ticketCount,
         'pickupLocation': 'Default Location',
         'paymentMethod': paymentMethod,
       };
-      
-      print('Booking: Creating booking with data: $bookingData');
-      
+
+      print('Creating booking with data: $bookingData');
+
       final response = await http.post(
-        Uri.parse('${ApiEndpoints.baseUrl}/bookings'),
+        Uri.parse('${ApiEndpoints.baseUrl}/booking'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(bookingData),
       );
-      
-      print('Booking: Response status: ${response.statusCode}');
-      print('Booking: Response body: ${response.body}');
-      
-      final responseData = json.decode(response.body);
-      
-      if (response.statusCode == 201 && responseData['success'] == true) {
-        // Clear any existing snackbars first
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      print('Booking response status: ${response.statusCode}');
+      print('Booking response body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final responseData = json.decode(response.body);
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ ${responseData['message'] ?? 'Booking created successfully with $paymentMethod!'}'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        // Clear any previous snackbars
+        ScaffoldMessenger.of(context).clearSnackBars();
         
-        // Navigate back to previous page after a short delay
-        await Future.delayed(Duration(seconds: 2));
-        Navigator.pop(context);
+        if (responseData['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Booking created successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          
+          // Navigate back after successful booking
+          Future.delayed(Duration(seconds: 2), () {
+            Navigator.pop(context);
+          });
+        } else {
+          final errorMessage = responseData['message'] ?? 'Failed to create booking';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       } else {
-        // Clear any existing snackbars first
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        
+        final errorData = json.decode(response.body);
+        final errorMessage = errorData['message'] ?? 'Failed to create booking';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error: ${responseData['error'] ?? 'Failed to create booking'}'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
+            duration: Duration(seconds: 3),
           ),
         );
       }
     } catch (e) {
-      // Clear any existing snackbars first
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      
+      print('Error creating booking: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Network Error: $e'),
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
+          duration: Duration(seconds: 3),
         ),
       );
     } finally {
@@ -124,233 +152,63 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
     }
   }
 
-  Future<void> _startEsewaPayment() async {
+  Future<void> _handleEsewaPayment() async {
     setState(() { _isLoading = true; });
-    
     try {
-      // eSewa test merchant code and URLs
-      final esewaMerchantCode = 'EPAYTEST';
-      // Since eSewa test environment is down, we'll create a mock payment gateway
       final mockPaymentUrl = 'https://mock-payment-gateway.vercel.app/esewa';
-      
+
       // Payment details
       final amt = _totalPrice.toStringAsFixed(0);
       final pid = widget.package['id'] ?? 'test-package';
-      
+
       // Show loading message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Opening eSewa payment gateway...'),
+        SnackBar(
+          content: Text('Redirecting to eSewa payment...'),
           backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
         ),
       );
-      
-      // Create a simple HTTP server to serve the eSewa payment form
-      final server = await HttpServer.bind('localhost', 0);
-      final port = server.port;
-      
-      // Handle the payment form request
-      server.listen((HttpRequest request) async {
-        if (request.uri.path == '/') {
-          // Serve the eSewa payment form
-          final html = '''
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>eSewa Payment</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-                .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                .header { text-align: center; margin-bottom: 20px; }
-                .details { margin-bottom: 20px; }
-                .details p { margin: 8px 0; }
-                .button { width: 100%; padding: 15px; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
-                .button:hover { background: #45a049; }
-                .note { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-                .payment-form { margin-top: 20px; }
-                .form-group { margin-bottom: 15px; }
-                .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-                .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-                .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin-top: 20px; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h2>eSewa Payment Gateway</h2>
-                </div>
-                <div class="details">
-                  <p><strong>Package:</strong> ${widget.package['title'] ?? 'Trek Package'}</p>
-                  <p><strong>Amount:</strong> Rs. $amt</p>
-                  <p><strong>Payment ID:</strong> $pid</p>
-                </div>
-                
-                <div id="paymentForm">
-                  <div class="payment-form">
-                    <h3>Test Payment Details</h3>
-                    <div class="form-group">
-                      <label>eSewa ID / Mobile Number:</label>
-                      <input type="text" id="esewaId" value="test@esewa.com.np" placeholder="Enter eSewa ID">
-                    </div>
-                    <div class="form-group">
-                      <label>MPIN:</label>
-                      <input type="password" id="mpin" value="1234" placeholder="Enter MPIN">
-                    </div>
-                    <button onclick="processPayment()" class="button">
-                      Pay Rs. $amt
-                    </button>
-                  </div>
-                </div>
-                
-                <div id="successMessage" style="display: none;" class="success">
-                  <h3>Payment Successful!</h3>
-                  <p>Transaction ID: TXN_${DateTime.now().millisecondsSinceEpoch}</p>
-                  <p>Amount: Rs. $amt</p>
-                  <p>Status: Completed</p>
-                </div>
-                
-                <div class="note">
-                  This is a mock payment gateway for testing purposes
-                </div>
-              </div>
-              <script>
-                function processPayment() {
-                  const esewaId = document.getElementById('esewaId').value;
-                  const mpin = document.getElementById('mpin').value;
-                  
-                  if (!esewaId || !mpin) {
-                    alert('Please enter both eSewa ID and MPIN');
-                    return;
-                  }
-                  
-                  // Hide payment form and show success
-                  document.getElementById('paymentForm').style.display = 'none';
-                  document.getElementById('successMessage').style.display = 'block';
-                  
-                  // Simulate payment processing
-                  setTimeout(function() {
-                    // Send success message to Flutter app
-                    if (window.flutter_inappwebview) {
-                      window.flutter_inappwebview.callHandler('paymentSuccess', {
-                        transactionId: 'TXN_' + Date.now(),
-                        amount: '$amt',
-                        status: 'success'
-                      });
-                    }
-                  }, 2000);
-                }
-              </script>
-            </body>
-            </html>
-          ''';
-          
-          request.response
-            ..headers.contentType = ContentType.html
-            ..write(html)
-            ..close();
-        }
-      });
-      
-      // Open the local server URL in browser
-      final localUrl = 'http://localhost:$port';
-      final launched = await launchUrl(
-        Uri.parse(localUrl),
-        mode: LaunchMode.externalApplication,
+
+      // Simulate payment process
+      await Future.delayed(Duration(seconds: 2));
+
+      // Simulate successful payment
+      await _bookAfterPaymentSuccess('esewa');
+    } catch (e) {
+      print('eSewa payment error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
-      
-      if (launched) {
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('eSewa payment gateway opened! Please complete payment.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        
-        // Wait for payment completion then create booking
-        await Future.delayed(const Duration(seconds: 10));
-        await _bookAfterPaymentSuccess('esewa');
-        
-        // Close the server
-        server.close();
-      } else {
-        // Fallback: create booking directly
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not open payment gateway. Creating booking directly...'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        await _bookAfterPaymentSuccess('esewa');
-        server.close();
-      }
-      
-     } catch (e) {
-       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(
-           content: Text('Error: $e'),
-           backgroundColor: Colors.red,
-         ),
-       );
-     } finally {
-       setState(() { _isLoading = false; });
-     }
-   }
+    } finally {
+      setState(() { _isLoading = false; });
+    }
+  }
 
   Future<void> _handleCashOnArrival() async {
-    setState(() { _isLoading = true; });
-    
-    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Row(
-            children: [
-              Icon(Icons.money, color: Colors.green, size: 28),
-              SizedBox(width: 10),
-              Text('Cash on Arrival', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            ],
+      builder: (context) => AlertDialog(
+        title: Text('Cash on Arrival'),
+        content: Text('You have selected Cash on Arrival payment. Your booking will be confirmed and you can pay when you arrive. Continue?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('You have selected to pay in cash upon arrival.'),
-              SizedBox(height: 10),
-              Text('Number of people: $_ticketCount', 
-                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
-              SizedBox(height: 10),
-              Text('Amount to pay: $_formattedPrice', 
-                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
-              SizedBox(height: 10),
-              Text('Please ensure you have the exact amount ready when you arrive at the pickup location.'),
-            ],
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Confirm'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text('Confirm Booking', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
 
     if (confirmed == true) {
       await _bookAfterPaymentSuccess('cash-on-arrival');
-    } else {
-      setState(() { _isLoading = false; });
     }
   }
 
@@ -375,11 +233,11 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
           ),
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Package Details Card
+              // Package Info Card
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -394,147 +252,110 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                     ),
                   ],
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.card_travel, color: Colors.redAccent, size: 24),
-                          ),
-                          SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.package['title'] ?? 'Trek Package',
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[800],
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                Text(
-                                  'Adventure awaits!',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      Container(
-                        padding: EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.attach_money, color: Colors.green, size: 24),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Total Price',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  Text(
-                                    _formattedPrice,
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              SizedBox(height: 30),
-              
-              // Ticket Counter Section
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 2,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.people, color: Colors.blue, size: 24),
-                          ),
-                          SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Number of People',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[800],
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                Text(
-                                  'Select how many people are joining',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                                 child: Padding(
+                   padding: const EdgeInsets.all(20),
+                   child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       // Package Image and Info Row
+                       Row(
+                         children: [
+                           // Package Image
+                           Container(
+                             width: 80,
+                             height: 80,
+                             decoration: BoxDecoration(
+                               borderRadius: BorderRadius.circular(12),
+                               boxShadow: [
+                                 BoxShadow(
+                                   color: Colors.grey.withOpacity(0.3),
+                                   spreadRadius: 1,
+                                   blurRadius: 5,
+                                   offset: Offset(0, 2),
+                                 ),
+                               ],
+                             ),
+                             child: ClipRRect(
+                               borderRadius: BorderRadius.circular(12),
+                               child: Image.network(
+                                 widget.package['image'] ?? 'https://via.placeholder.com/80x80',
+                                 width: 80,
+                                 height: 80,
+                                 fit: BoxFit.cover,
+                                 loadingBuilder: (context, child, loadingProgress) {
+                                   if (loadingProgress == null) return child;
+                                   return Container(
+                                     color: Colors.grey[300],
+                                     child: Center(
+                                       child: CircularProgressIndicator(
+                                         value: loadingProgress.expectedTotalBytes != null
+                                             ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                             : null,
+                                         strokeWidth: 2,
+                                       ),
+                                     ),
+                                   );
+                                 },
+                                 errorBuilder: (context, error, stackTrace) {
+                                   return Container(
+                                     color: Colors.grey[300],
+                                     child: Icon(Icons.card_travel, color: Colors.redAccent, size: 30),
+                                   );
+                                 },
+                               ),
+                             ),
+                           ),
+                           SizedBox(width: 16),
+                           Expanded(
+                             child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text(
+                                   widget.package['title'] ?? 'Trek Package',
+                                   style: TextStyle(
+                                     fontSize: 18,
+                                     fontWeight: FontWeight.bold,
+                                     color: Colors.grey[800],
+                                   ),
+                                 ),
+                                 SizedBox(height: 4),
+                                 Text(
+                                   widget.package['location'] ?? 'Nepal',
+                                   style: TextStyle(
+                                     fontSize: 14,
+                                     color: Colors.grey[600],
+                                   ),
+                                 ),
+                                 SizedBox(height: 8),
+                                 Row(
+                                   children: [
+                                     Icon(Icons.star, color: Colors.amber, size: 16),
+                                     SizedBox(width: 4),
+                                     Text(
+                                       widget.package['rating']?.toString() ?? '4.5',
+                                       style: TextStyle(
+                                         fontSize: 14,
+                                         fontWeight: FontWeight.bold,
+                                         color: Colors.grey[700],
+                                       ),
+                                     ),
+                                     SizedBox(width: 16),
+                                     Icon(Icons.access_time, color: Colors.grey[600], size: 16),
+                                     SizedBox(width: 4),
+                                     Text(
+                                       widget.package['duration'] ?? '14 days',
+                                       style: TextStyle(
+                                         fontSize: 14,
+                                         color: Colors.grey[600],
+                                       ),
+                                     ),
+                                   ],
+                                 ),
+                               ],
+                             ),
+                           ),
+                         ],
+                       ),
                       SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -600,87 +421,67 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                         ],
                       ),
                       SizedBox(height: 15),
-                      Container(
-                        padding: EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Total Price',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                Text(
-                                  _formattedPrice,
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                              ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total Price:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
                             ),
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.attach_money,
-                                color: Colors.white,
-                                size: 24,
-                              ),
+                          ),
+                          Text(
+                            _formattedPrice,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.redAccent,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ),
               
-              SizedBox(height: 30),
+              SizedBox(height: 20),
               
-              // Payment Options
+              // Payment Methods
               Text(
-                'Choose Payment Method',
+                'Payment Method',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.grey[800],
                 ),
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 15),
               
               // eSewa Payment Option
               GestureDetector(
-                onTap: () => setState(() => _selectedPaymentMethod = 'esewa'),
+                onTap: () {
+                  setState(() {
+                    _selectedPaymentMethod = 'esewa';
+                  });
+                },
                 child: Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _selectedPaymentMethod == 'esewa' ? Colors.green.withOpacity(0.1) : Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    color: _selectedPaymentMethod == 'esewa' ? Colors.orange.shade50 : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _selectedPaymentMethod == 'esewa' ? Colors.green : Colors.grey.withOpacity(0.3),
-                      width: _selectedPaymentMethod == 'esewa' ? 2 : 1,
+                      color: _selectedPaymentMethod == 'esewa' ? Colors.orange : Colors.grey.shade300,
+                      width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.grey.withOpacity(0.1),
                         spreadRadius: 1,
-                        blurRadius: 5,
+                        blurRadius: 3,
                         offset: Offset(0, 2),
                       ),
                     ],
@@ -688,31 +489,31 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                   child: Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(12),
+                        padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(Icons.payment, color: Colors.green, size: 24),
+                        child: Icon(Icons.payment, color: Colors.orange.shade700, size: 24),
                       ),
-                      SizedBox(width: 15),
+                      SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Pay with eSewa',
+                              'eSewa',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey[800],
                               ),
                             ),
-                            SizedBox(height: 5),
+                            SizedBox(height: 4),
                             Text(
-                              'Secure online payment',
+                              'Pay securely with eSewa',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -720,32 +521,36 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                         ),
                       ),
                       if (_selectedPaymentMethod == 'esewa')
-                        Icon(Icons.check_circle, color: Colors.green, size: 24),
+                        Icon(Icons.check_circle, color: Colors.orange, size: 24),
                     ],
                   ),
                 ),
               ),
               
-              SizedBox(height: 15),
+              SizedBox(height: 12),
               
-              // Cash on Arrival Option
+              // Cash on Arrival Payment Option
               GestureDetector(
-                onTap: () => setState(() => _selectedPaymentMethod = 'cash'),
+                onTap: () {
+                  setState(() {
+                    _selectedPaymentMethod = 'cash-on-arrival';
+                  });
+                },
                 child: Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _selectedPaymentMethod == 'cash' ? Colors.orange.withOpacity(0.1) : Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    color: _selectedPaymentMethod == 'cash-on-arrival' ? Colors.green.shade50 : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _selectedPaymentMethod == 'cash' ? Colors.orange : Colors.grey.withOpacity(0.3),
-                      width: _selectedPaymentMethod == 'cash' ? 2 : 1,
+                      color: _selectedPaymentMethod == 'cash-on-arrival' ? Colors.green : Colors.grey.shade300,
+                      width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.grey.withOpacity(0.1),
                         spreadRadius: 1,
-                        blurRadius: 5,
+                        blurRadius: 3,
                         offset: Offset(0, 2),
                       ),
                     ],
@@ -753,14 +558,14 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                   child: Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(12),
+                        padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(Icons.money, color: Colors.orange, size: 24),
+                        child: Icon(Icons.money, color: Colors.green.shade700, size: 24),
                       ),
-                      SizedBox(width: 15),
+                      SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,24 +573,24 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
                             Text(
                               'Cash on Arrival',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey[800],
                               ),
                             ),
-                            SizedBox(height: 5),
+                            SizedBox(height: 4),
                             Text(
                               'Pay when you arrive',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.grey[600],
                               ),
                             ),
                           ],
                         ),
                       ),
-                      if (_selectedPaymentMethod == 'cash')
-                        Icon(Icons.check_circle, color: Colors.orange, size: 24),
+                      if (_selectedPaymentMethod == 'cash-on-arrival')
+                        Icon(Icons.check_circle, color: Colors.green, size: 24),
                     ],
                   ),
                 ),
@@ -793,69 +598,60 @@ class _SimpleBookingPageState extends State<SimpleBookingPage> {
               
               SizedBox(height: 30),
               
-              // Proceed Button
+              // Book Now Button
               SizedBox(
                 width: double.infinity,
-                height: 55,
                 child: ElevatedButton(
                   onPressed: _isLoading || _selectedPaymentMethod == null
                       ? null
-                      : _selectedPaymentMethod == 'esewa'
-                          ? _startEsewaPayment
-                          : _handleCashOnArrival,
+                      : () {
+                          if (_selectedPaymentMethod == 'esewa') {
+                            _handleEsewaPayment();
+                          } else if (_selectedPaymentMethod == 'cash-on-arrival') {
+                            _handleCashOnArrival();
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _selectedPaymentMethod == 'esewa' ? Colors.green : Colors.orange,
+                    backgroundColor: _selectedPaymentMethod == 'esewa' ? Colors.orange : 
+                                   _selectedPaymentMethod == 'cash-on-arrival' ? Colors.green : Colors.grey,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 3,
+                    padding: EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: _isLoading
-                      ? SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Processing...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         )
                       : Text(
-                          _selectedPaymentMethod == 'esewa'
-                              ? 'Pay with eSewa'
-                              : 'Confirm Cash Payment',
+                          _selectedPaymentMethod == 'esewa' ? 'Pay with eSewa' :
+                          _selectedPaymentMethod == 'cash-on-arrival' ? 'Confirm Cash on Arrival' :
+                          'Select Payment Method',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                ),
-              ),
-              
-              SizedBox(height: 20),
-              
-              // Additional Info
-              Container(
-                padding: EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Your booking will be confirmed immediately. For cash payments, please bring exact change.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
